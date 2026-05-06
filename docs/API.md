@@ -101,15 +101,15 @@ Pure stdlib (`difflib.SequenceMatcher`). Normalizes volatile metadata (hunk head
 ## `repo2rlenv.pipelines`
 
 ```python
-from repo2rlenv.pipelines import PIPELINES
+from repo2rlenv.pipelines import PIPELINES, Pipeline, PipelineResult
 from repo2rlenv.pipelines.pr_mining_lite import PRMiningLitePipeline
 
 cls = PIPELINES["pr_mining_lite"]
 pipeline = cls(generation_input, options)
-result = pipeline.run(out_dir)   # returns PipelineResult(candidates, emitted, skipped, ...)
+result = pipeline.run(out_dir)   # returns PipelineResult(candidates, emitted, skipped, out_dir, skip_reasons)
 ```
 
-See [pipelines/](./pipelines/) for per-pipeline docs.
+`Pipeline` is a `runtime_checkable` Protocol — every entry in `PIPELINES` duck-conforms. `PipelineResult` is the standard return shape across pipelines. See [pipelines/](./pipelines/) for per-pipeline docs.
 
 ## `repo2rlenv.emitter.harbor`
 

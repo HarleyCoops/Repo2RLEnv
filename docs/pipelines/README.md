@@ -53,10 +53,23 @@ The reference repos are cloned shallowly to `references/` (gitignored).
 
 ## Adding a new pipeline
 
-1. Create `src/repo2rlenv/spec/options.py:<NameOptions>` (Pydantic, `extra="forbid"`)
-2. Register it in `OPTIONS_REGISTRY`
-3. Implement `src/repo2rlenv/pipelines/<name>.py:<Name>Pipeline` with a `run(out_dir) -> PipelineResult` method
-4. Register in `src/repo2rlenv/pipelines/__init__.py:PIPELINES`
-5. Add a doc here with: status, algorithm sketch, options table, `[metadata.repo2env.<name>]` schema, example invocation
+The contract every pipeline must satisfy is the [`Pipeline` Protocol](../../src/repo2rlenv/pipelines/base.py):
+
+```python
+class Pipeline(Protocol):
+    name: ClassVar[PipelineName]
+    def __init__(self, input: GenerationInput, options: BaseModel) -> None: ...
+    def run(self, out_dir: Path) -> PipelineResult: ...
+```
+
+Steps:
+
+1. Add the enum value to `PipelineName` in `src/repo2rlenv/spec/input.py`
+2. Create `<NameOptions>` (Pydantic, `extra="forbid"`) in `src/repo2rlenv/spec/options.py` and register in `OPTIONS_REGISTRY`
+3. Implement `src/repo2rlenv/pipelines/<name>.py:<Name>Pipeline` matching the Protocol — declare `name: ClassVar[PipelineName]`, accept `(input, options)` in `__init__`, return `PipelineResult` from `run`
+4. Register the class in `src/repo2rlenv/pipelines/__init__.py:PIPELINES`
+5. Add a doc page here with: status, algorithm sketch + Mermaid flowchart, options table, `[metadata.repo2env.<name>]` schema, example invocation
+
+`tests/test_pipeline_contract.py` verifies every registered pipeline conforms to the Protocol — adding a new one without doing the above will fail there.
 
 Per-pipeline docs follow the same template — see [`pr_mining_lite.md`](./pr_mining_lite.md) for the canonical example.

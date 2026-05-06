@@ -35,9 +35,9 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import ClassVar
 
 from repo2rlenv.auth import resolve_github_token
 from repo2rlenv.emitter.harbor import HarborTask, write_harbor_task
@@ -47,19 +47,11 @@ from repo2rlenv.github import (
     fetch_pr_diff,
     list_merged_prs,
 )
-from repo2rlenv.spec.input import GenerationInput
+from repo2rlenv.pipelines.base import PipelineResult
+from repo2rlenv.spec.input import GenerationInput, PipelineName
 from repo2rlenv.spec.options import PRMiningLiteOptions
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(slots=True)
-class PipelineResult:
-    candidates: int
-    emitted: int
-    skipped: int
-    out_dir: Path
-    skip_reasons: dict[str, int]
 
 
 _CLOSES_RE = re.compile(
@@ -86,9 +78,9 @@ def _build_instruction(pr: PullRequestSummary) -> str:
 
 
 class PRMiningLitePipeline:
-    """No-sandbox, text-only PR mining."""
+    """No-sandbox, text-only PR mining. Implements the `Pipeline` Protocol."""
 
-    name = "pr_mining_lite"
+    name: ClassVar[PipelineName] = PipelineName.PR_MINING_LITE
 
     def __init__(self, input: GenerationInput, options: PRMiningLiteOptions):
         self.input = input
