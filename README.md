@@ -89,24 +89,6 @@ By targeting Harbor we inherit its full stack: Local Docker / Modal / Daytona / 
 
 ---
 
-## Why Repo2RLEnv
-
-The synthesis-of-coding-tasks landscape compared:
-
-| | Repo2RLEnv | SWE-bench | SWE-Bench++ | SWE-smith |
-|---|:-:|:-:|:-:|:-:|
-| Point at any repo | ✅ | ✗ (12 curated) | ✅ | ✅ |
-| Real PR mining | ✅ | ✅ | ✅ | ✗ |
-| Synthetic mutation | planned | ✗ | ✗ | ✅ |
-| 4-layer QA gate | planned | manual | ✅ | partial |
-| Polyglot from day one | ✅ | Python | Python | Python-dominant |
-| Plugs into existing trainers | ✅ via Harbor | ✗ | ✗ | SWE-agent only |
-| HF Hub native | ✅ | partial | ✗ | ✗ |
-
-The wedge: **multiple synthesis pipelines under one quality-gated framework, dropping straight into the trainers and harnesses people already use.**
-
----
-
 ## Documentation
 
 - [`docs/SPEC.md`](./docs/SPEC.md) — input contract (`GenerationInput`) + Harbor-shaped output contract
