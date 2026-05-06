@@ -1,18 +1,15 @@
-# Repo2Env
+# Repo2RLEnv
 
-**Turn any GitHub repository into an RL environment for training your LLM.**
+**Turn any repository into an RL environment for training and evaluation.**
 
-Point Repo2Env at a repo. It walks the git history, mines real PRs (or synthesizes new tasks), wraps each one in a reproducible sandbox, and emits a standardized, verifiable task dataset you can train on, evaluate against, or push straight to the Hugging Face Hub.
+Repo2RLEnv synthesizes verifiable data from existing repositories using a variety of methods, exports it into a uniform spec, and lets you train models, evaluate agents, and publish straight to the Hugging Face Hub. End-to-end — **synthesis, training, eval, export** — with the main focus on training. The uniform spec is [Harbor](https://github.com/harbor-framework/harbor)'s, so the datasets you produce drop straight into any Harbor-compatible runtime as well.
 
 ```
-                 ┌─────────────┐
-  any repo  ───► │  Repo2Env │ ───►  RL-ready task dataset
-                 └─────────────┘
-                       │
-       ┌───────────────┼───────────────┐
-       │               │               │
-   Generate         Standardize      Consume
-   (pipelines)     (Task spec)    (sandboxes + exporters)
+  ╭──────────────╮     ╭──────────────╮     ╭──────────────╮     ╭──────────────────╮
+  │     any      │ ──▶ │  synthesize  │ ──▶ │ uniform spec │ ──▶ │ train · eval ·   │
+  │     repo     │     │  (pipelines) │     │   (Harbor)   │     │  push to HF Hub  │
+  ╰──────────────╯     ╰──────────────╯     ╰──────────────╯     ╰──────────────────╯
+                       └──────────────────────── Repo2RLEnv ────────────────────────┘
 ```
 
 ---
@@ -20,126 +17,101 @@ Point Repo2Env at a repo. It walks the git history, mines real PRs (or synthesiz
 ## Quickstart
 
 ```bash
-pip install repo2env
+# Install (pick one)
+uv add repo2rlenv                                 # add to a uv-managed project
+uvx repo2rlenv --help                           # one-shot, no install
+pip install repo2rlenv                            # classic
 
-# 1. Generate tasks from a repo
-repo2env generate https://github.com/django/django \
-  --pipeline pr_mining \
-  --sandbox modal \
-  --limit 100 \
-  --out ./datasets/django
+# Generate
+repo2rlenv generate https://github.com/django/django \
+  --pipeline pr_mining --limit 100 --out ./datasets/django
 
-# 2. Validate the dataset against the spec
-repo2env validate ./datasets/django
+# Validate
+repo2rlenv validate ./datasets/django
 
-# 3. Run a single task end-to-end
-repo2env run ./datasets/django/tasks/django__12345 --agent claude-code
+# Push to the Hub
+repo2rlenv push ./datasets/django --hub-repo-id myorg/django-r2e
 
-# 4. Export to your favorite RL framework
-repo2env export ./datasets/django --format openenv --out ./envs/
+# Evaluate any agent
+repo2rlenv eval ./datasets/django --agent claude-code
 
-# 5. Push to the Hub
-repo2env push ./datasets/django --hub-repo-id myorg/django-r2e
+# Train any model
+repo2rlenv train ./datasets/django --trainer trl --model Qwen/Qwen2.5-Coder-7B
 ```
+
+One CLI. Five verbs. No glue code.
 
 ---
 
-## How it works
+## Pipelines
 
-Repo2Env is built around one rock-solid idea: **a single Task spec sits in the middle, and everything else is pluggable.**
-
-### 1. Generation — pipelines that produce tasks
+The heart of Repo2RLEnv. Different ways to manufacture verifiable tasks from the same repo — pick one, pick all, write your own.
 
 | Pipeline | What it does |
 |---|---|
-| `pr_mining` | Walks merged PRs, replays each in a sandbox, captures fail-to-pass tests as the oracle |
-| `mutation` | Mutates the codebase, keeps mutations that break ≥1 test, lets an LLM author the issue |
-| `issue_gen` | LLM proposes issues from existing code, then mutates to make them solvable |
-| *(plugin)* | Third-party pipelines via Python entry points |
+| **`pr_mining`** | Walks merged PRs, replays each one in an isolated sandbox, captures the test that the PR makes pass — that test becomes the reward |
+| **`mutation`** | Mutates the codebase, keeps mutations that break ≥1 existing test, lets an LLM author the resulting issue |
+| **`issue_gen`** | LLM proposes plausible issues from existing code, then mutates the repo to make them real and solvable |
+| **`<your_plugin>`** | Drop in a third-party pipeline via Python entry points |
 
-### 2. Spec — the immovable middle
-
-Every pipeline outputs the same versioned, schema-validated Task. Each task is self-contained:
-
-```
-django__12345/
-├── task.yaml              # spec_version, provenance, reward config
-├── instruction.md         # what the agent is asked to do
-├── env/Dockerfile         # reproducible environment
-├── tests/test.sh          # verifier — writes reward to /logs/reward.txt
-└── solution/patch.diff    # reference oracle (optional)
-```
-
-Datasets ship to the Hub as parquet metadata + LFS-tracked task directories — query the headers fast, pull the artifacts on demand:
-
-```python
-from datasets import load_dataset
-ds = load_dataset("myorg/django-r2e")        # fast metadata view
-
-import repo2env
-tasks = repo2env.load("myorg/django-r2e") # full tasks with files
-```
-
-### 3. Consumption — sandboxes and exporters, independently swappable
-
-**Sandboxes** answer *where* the Docker runs. The same task runs anywhere.
-
-| Sandbox | Status | Best for |
-|---|---|---|
-| Local Docker | v0.1 | Dev, smoke tests |
-| Modal | v0.2 | Generation at scale |
-| E2B | v0.3 | Fast RL rollouts |
-| Daytona | v1.0 | Harbor parity |
-| EC2 | v1.0 | Cheap large-scale builds |
-| HF Spaces | v1.0 | Hub-native deployment |
-
-**Exporters** answer *what shape* the task takes for downstream RL frameworks.
-
-| Exporter | Target |
-|---|---|
-| `harbor` | Harbor task directory (native shape) |
-| `openenv` | OpenEnv FastAPI server in Docker (Meta + HF) |
-| `verifiers` | `load_environment()` Python module (Prime Intellect) |
-| `ors` | Open Reward Standard / MCP-compatible |
-
-You can mix and match: generate with `pr_mining` on Modal, export to OpenEnv, run rollouts on E2B. Three independent dimensions.
+Every pipeline flows through the same 4-layer quality gate — environment determinism, oracle consistency, LLM-judge semantic alignment, false-negative filtering — before a task is admitted to the dataset. Junk in, junk out is the default in this space; Repo2RLEnv's QA is what stops it.
 
 ---
 
-## Why another framework?
+## What you get out
 
-| | Repo2Env | SWE-bench | SWE-smith | Harbor | verifiers |
-|---|:-:|:-:|:-:|:-:|:-:|
-| Point at any repo | ✅ | ✗ (curated set) | ✅ | ✗ | ✗ |
-| Real PR mining | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Synthetic mutation | ✅ | ✗ | ✅ | ✗ | ✗ |
-| Polyglot from day one | ✅ | Python | Python-dominant | ✅ | ✅ |
-| Standardized task spec | ✅ | partial | partial | ✅ | ✅ |
-| HF Hub native publish | ✅ | ✗ | ✗ | ✗ | partial |
-| Multi-sandbox runtime | ✅ | ✗ | ✗ | partial | ✗ |
-| Multi-exporter | ✅ | ✗ | ✗ | ✗ | ✗ |
+A single dataset format that:
 
-Repo2Env is the first framework that treats **generation, spec, and consumption as three independently pluggable layers** — so you're never locked to one pipeline, one sandbox, or one trainer.
+- Is **verifiable** — every task carries an executable test that produces a real reward signal
+- Is **reproducible** — pinned image digests, deterministic verifiers, content-addressed
+- **Trains anywhere** — TRL, SkyRL, Prime-RL, Tinker, Miles, Slime, harbor.rl
+- **Evaluates anywhere** — Claude Code, OpenHands, Codex CLI, Gemini CLI, Mini-SWE-Agent, your own agent
+- Is **language-agnostic** — Dockerfile + shell verifier; not Python-only
+- **Publishes natively** to Hugging Face Hub, public or private
+- Supports **private repos** end-to-end (auth, build secrets declared, verifier-time secrets forbidden)
+
+---
+
+## Under the hood
+
+Repo2RLEnv emits datasets in the [Harbor](https://github.com/harbor-framework/harbor) task format — a battle-tested, language-agnostic spec with an existing ecosystem of sandboxes, agent harnesses, and training-framework integrations. By targeting Harbor we inherit its full stack: Local Docker / Modal / Daytona / E2B / Runloop sandboxes, every major coding-agent harness, parallel execution, registry CLI, and downstream hooks for [OpenReward](https://docs.openreward.ai) (which adds Miles, Slime, etc.). A small `[metadata.repo2rlenv]` extension carries provenance, image digests, and pipeline lineage.
+
+We don't reinvent the spec — we generate the data that goes into it.
+
+---
+
+## Why Repo2RLEnv
+
+The synthesis-of-coding-tasks landscape compared:
+
+| | Repo2RLEnv | SWE-bench | SWE-Bench++ | SWE-smith |
+|---|:-:|:-:|:-:|:-:|
+| Point at any repo | ✅ | ✗ (12 curated) | ✅ | ✅ |
+| Real PR mining | ✅ | ✅ | ✅ | ✗ |
+| Synthetic mutation | ✅ | ✗ | ✗ | ✅ |
+| 4-layer QA gate | ✅ | manual | ✅ | partial |
+| Polyglot from day one | ✅ | Python | Python | Python-dominant |
+| Plugs into existing trainers | ✅ | ✗ | ✗ | SWE-agent only |
+| HF Hub native | ✅ | partial | ✗ | ✗ |
+
+The wedge: **PR mining + synthetic mutation under one quality-gated pipeline, language-agnostic, dropping straight into the trainers and harnesses people already use.**
 
 ---
 
 ## Status
 
-**Pre-alpha.** v0.1 ships: `pr_mining` + Local Docker + Harbor exporter + HF Hub push. End-to-end on Python repos.
+Pre-alpha. `pr_mining` + Local Docker + HF Hub push works end-to-end on Python repos.
 
-See [`SCHEMA.md`](./SCHEMA.md) for the Task spec. See [`ROADMAP.md`](./ROADMAP.md) for what's next.
+## Credits
 
-## Inspiration & credits
+Repo2RLEnv stands on shoulders:
 
-Repo2Env stands on the shoulders of:
-
-- [SWE-bench](https://github.com/SWE-bench/SWE-bench) and [SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/) — the original PR-as-task formulation
-- [SWE-Bench++](https://arxiv.org/abs/2512.17419) — the four-stage QA pipeline
-- [SWE-smith](https://github.com/SWE-bench/SWE-smith) — mutation-based task synthesis
-- [Harbor](https://github.com/harbor-framework/harbor) — declarative task directory layout
-- [OpenEnv](https://github.com/meta-pytorch/OpenEnv) — Gymnasium-style RL spec from Meta + HF
-- [verifiers](https://github.com/willccbb/verifiers) — Rubric-based reward design from Prime Intellect
-- [Open Reward Standard](https://docs.openreward.ai) — MCP-extended RL primitives
+- [Harbor](https://github.com/harbor-framework/harbor) — the task format and runtime ecosystem we adopt
+- [OpenReward](https://docs.openreward.ai) — ORS protocol layer above Harbor; extra trainer integrations
+- [SWE-bench](https://github.com/SWE-bench/SWE-bench) / [SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/) — original PR-as-task formulation
+- [SWE-Bench++](https://arxiv.org/abs/2512.17419) — four-stage QA pipeline we re-implement
+- [SWE-smith](https://github.com/SWE-bench/SWE-smith) — mutation-based synthesis
+- [verifiers](https://github.com/willccbb/verifiers) (Prime Intellect), [OpenEnv](https://github.com/meta-pytorch/OpenEnv) (Meta + HF) — adjacent standardization efforts
 
 ## License
 
