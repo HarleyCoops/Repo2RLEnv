@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from repo2rlenv.pipelines.pr_mining_lite import PRMiningLitePipeline
+from repo2rlenv.pipelines.pr_diff import PRDiffPipeline
 from repo2rlenv.reward import calculate_diff_similarity_reward
 from repo2rlenv.spec.input import (
     GenerationInput,
@@ -25,7 +25,7 @@ from repo2rlenv.spec.input import (
     PipelineSpec,
     RepoSpec,
 )
-from repo2rlenv.spec.options import PRMiningLiteOptions
+from repo2rlenv.spec.options import PRDiffOptions
 
 
 pytestmark = pytest.mark.skipif(
@@ -49,7 +49,7 @@ def test_e2e_public_trl(tmp_path: Path):
     """Mine 2 PRs from huggingface/trl and verify each is a valid Harbor task."""
     gen_input = GenerationInput(
         repo=RepoSpec(url="huggingface/trl", access="public"),
-        pipeline=PipelineSpec(name=PipelineName.PR_MINING_LITE, options={}),
+        pipeline=PipelineSpec(name=PipelineName.PR_DIFF, options={}),
         llm=LLMSpec(provider="anthropic", model="claude-sonnet-4-6"),
         output=OutputSpec(
             destination=str(tmp_path),
@@ -57,8 +57,8 @@ def test_e2e_public_trl(tmp_path: Path):
             dataset_name="trl-r2e",
         ),
     )
-    options = PRMiningLiteOptions(limit=2, max_files_per_pr=10)
-    pipeline = PRMiningLitePipeline(gen_input, options)
+    options = PRDiffOptions(limit=2, max_files_per_pr=10)
+    pipeline = PRDiffPipeline(gen_input, options)
 
     result = pipeline.run(tmp_path)
 

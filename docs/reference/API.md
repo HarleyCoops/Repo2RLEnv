@@ -25,7 +25,7 @@ The CLI is a thin layer over the Python API. Anything the CLI does, you can do i
 from repo2rlenv.spec import (
     GenerationInput, RepoSpec, PipelineSpec, LLMSpec,
     OutputSpec, QASpec, SandboxSpec, AuthSpec,
-    PipelineName, PRMiningLiteOptions, PRMiningOptions,
+    PipelineName, PRDiffOptions, PRRuntimeOptions,
 )
 from repo2rlenv.spec.options import parse_options, OPTIONS_REGISTRY
 ```
@@ -35,7 +35,7 @@ Build a `GenerationInput` directly:
 ```python
 g = GenerationInput(
     repo=RepoSpec(url="huggingface/trl", access="auto"),
-    pipeline=PipelineSpec(name=PipelineName.PR_MINING_LITE, options={"limit": 5}),
+    pipeline=PipelineSpec(name=PipelineName.PR_DIFF, options={"limit": 5}),
     llm=LLMSpec(provider="anthropic", model="claude-sonnet-4-6"),
     output=OutputSpec(
         destination="./out", org="myorg", dataset_name="trl-r2e",
@@ -102,9 +102,9 @@ Pure stdlib (`difflib.SequenceMatcher`). Normalizes volatile metadata (hunk head
 
 ```python
 from repo2rlenv.pipelines import PIPELINES, Pipeline, PipelineResult
-from repo2rlenv.pipelines.pr_mining_lite import PRMiningLitePipeline
+from repo2rlenv.pipelines.pr_diff import PRDiffPipeline
 
-cls = PIPELINES["pr_mining_lite"]
+cls = PIPELINES["pr_diff"]
 pipeline = cls(generation_input, options)
 result = pipeline.run(out_dir)   # returns PipelineResult(candidates, emitted, skipped, out_dir, skip_reasons)
 ```
@@ -122,7 +122,7 @@ task = HarborTask(
     description="...",
     instruction="...",
     oracle_diff="...",
-    repo2env={"pipeline": "pr_mining_lite", ...},
+    repo2env={"pipeline": "pr_diff", ...},
 )
 path = write_harbor_task(task, dest_dir)
 ```
@@ -139,7 +139,7 @@ result = push_to_hub(
     repo_id="AdithyaSK/trl-r2e-v0-1",
     auth=auth_spec,
     private=False,
-    pipeline="pr_mining_lite",
+    pipeline="pr_diff",
     repo_source="huggingface/trl",
 )
 print(result.registry_url)

@@ -14,8 +14,8 @@ from repo2rlenv.spec.input import (
     SandboxSpec,
 )
 from repo2rlenv.spec.options import (
-    PRMiningLiteOptions,
-    PRMiningOptions,
+    PRDiffOptions,
+    PRRuntimeOptions,
 )
 
 __all__ = [
@@ -27,8 +27,8 @@ __all__ = [
     "OutputSpec",
     "PipelineName",
     "PipelineSpec",
-    "PRMiningLiteOptions",
-    "PRMiningOptions",
+    "PRDiffOptions",
+    "PRRuntimeOptions",
     "QASpec",
     "RepoSpec",
     "SandboxSpec",

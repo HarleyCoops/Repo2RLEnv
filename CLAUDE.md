@@ -25,14 +25,14 @@ src/repo2rlenv/
 ├── spec/                       # Pydantic input + output models (the contract)
 ├── pipelines/
 │   ├── base.py                 # Pipeline Protocol + PipelineResult
-│   ├── pr_mining_lite.py       # SHIPPED — SWE-RL-style text-only PR mining
-│   └── <future pipelines>
+│   ├── pr_diff.py              # SHIPPED — text-only PR mining (was: pr_mining_lite)
+│   └── <future pipelines>      # pr_runtime, commit_runtime, mutation_bugs, ...
 ├── bootstrap/                  # v0.2 — LLM-driven Docker env generation
 │   ├── runner.py               # ensure_bootstrap() orchestrator
 │   ├── agent.py                # ReAct loop
 │   ├── docker.py               # DockerSandbox primitives
 │   ├── language.py             # auto-detect Python/JS/Go/Rust/...
-│   └── cache.py                # filesystem cache under ./envs/
+│   └── cache.py                # filesystem cache under ./envs/ (keyed on opts)
 ├── ui/                         # Unified Rich UI module (every CLI uses this)
 │   ├── console.py              # singleton R2EConsole + install_logging()
 │   ├── theme.py                # one place for colors + glyphs
@@ -50,14 +50,20 @@ src/repo2rlenv/
 ├── config.py                   # YAML/TOML config loader
 └── cli.py                      # argparse entry points
 
-docs/                           # public docs (committed)
-├── SPEC.md · AUTH.md · API.md · AGENTS.md · BOOTSTRAP.md · README.md
-└── pipelines/                  # per-pipeline docs with Mermaid flowcharts
+docs/                           # public docs (committed), three tiers:
+├── README.md                   #   index
+├── quickstart.md               #   install → first dataset → push, 10 min
+├── reference/                  #   stable contracts + module-level API
+│   └── SPEC.md · API.md · AUTH.md · BOOTSTRAP.md · AGENTS.md
+├── pipelines/                  #   one page per synthesis pipeline
+│   └── README.md · pr_diff.md · pr_runtime.md · ...
+└── contributing/
+    └── ADDING_A_PIPELINE.md    #   cookbook for shipping a new pipeline
 
 plans/                          # internal working docs (gitignored)
 references/                     # cloned inspiration repos (gitignored)
 envs/, envs-*/, .r2e_cache/     # local artifacts (gitignored)
-tests/                          # pytest; 66/66 pass as of v0.2
+tests/                          # pytest; 71/71 pass as of v0.2
 ```
 
 ## Pipeline contract
@@ -125,7 +131,7 @@ For GHCR push: needs `gh auth refresh -h github.com -s write:packages` (one-time
 - **No `Co-Authored-By: Claude` trailer** on commits. User explicitly rejected it; see `~/.claude/projects/.../memory/feedback_no_coauthor.md`.
 - **Commits**: terse subject + short body explaining "why". Don't reference the current task; that goes in the PR description.
 - **PRs**: title under 70 chars; description has summary + test plan + out-of-scope items. Close issues via `Closes #N` in commit body.
-- **Tests**: every code change should keep the suite green. `uv run pytest -q` is the canonical command. 66/66 must pass.
+- **Tests**: every code change should keep the suite green. `uv run pytest -q` is the canonical command. 71/71 must pass.
 - **Acknowledgments**: when a file draws inspiration from external work, add a header block crediting the source repo + paper + license + clarifying our license posture. See `bootstrap/__init__.py` or `reward.py` for the format.
 
 ## Cheatsheet — common tasks
@@ -136,7 +142,7 @@ For GHCR push: needs `gh auth refresh -h github.com -s write:packages` (one-time
 
 # Generate a small dataset, push to HF Hub
 uv run repo2rlenv generate \
-  --repo huggingface/trl --pipeline pr_mining_lite \
+  --repo huggingface/trl --pipeline pr_diff \
   --pipeline-opt limit=5 \
   --llm anthropic/claude-sonnet-4-6 \
   --out hf://AdithyaSK/trl-r2e-v0-1
@@ -158,7 +164,7 @@ uv add --dev <pkg>      # dev only
 ## Key external dependencies
 
 - **Harbor** (`uv tool install harbor`) — runs our generated tasks. We don't ship a parallel runtime.
-- **Docker** — required for the `bootstrap` phase and any sandbox-required pipeline. Lite pipelines work without it.
+- **Docker** — required for the `bootstrap` phase and any `_runtime` pipeline. `_diff` pipelines (text-only) work without it.
 - **LiteLLM** — single client across all LLM providers (Anthropic / OpenAI / HF Router / Bedrock / Ollama / vLLM).
 - **Rich** — every CLI surface; foundation of `src/repo2rlenv/ui/`.
 - **huggingface_hub** — dataset publish/pull; auto-resolves token from `~/.cache/huggingface/token`.
@@ -174,9 +180,17 @@ uv add --dev <pkg>      # dev only
 
 ## Status (May 2026)
 
-- **v0.1.0 shipped** on PyPI: `pr_mining_lite` + HF Hub publish + diff-similarity reward
-- **v0.2 in flight** (PR #2): bootstrap phase, Rich UI module, cost tracking
-- **v0.3 planned**: full `pr_mining` with Harbor execution + TRL trainer bridge
-- 8 more pipelines planned in `docs/pipelines/` (commit_mining, mutation, oss_instruct, equivalence_tests, live_pr_mining, cve_mining, refactor_synthesis, plus `pr_mining` full)
+- **v0.1.0 shipped** on PyPI: `pr_diff` (originally `pr_mining_lite`) + HF Hub publish + diff-similarity reward
+- **v0.2 merged into main**: bootstrap phase, Rich UI module, cost tracking, content-addressed cache keyed on bootstrap options
+- **v0.3 in flight**: `pr_runtime` (sandbox-verified PR mining) + auto-trigger of bootstrap from `generate`
+- 8 more pipelines planned in `docs/pipelines/` — see [`docs/pipelines/README.md`](./docs/pipelines/README.md) for the status table
+
+### Naming convention (post-rename)
+
+Pipelines follow `{source}_{shape}`:
+- `_diff` — text-only, no sandbox (e.g. `pr_diff`)
+- `_runtime` — runs inside the bootstrap sandbox to verify the oracle (e.g. `pr_runtime`, `commit_runtime`)
+- `_stream` — continuous mining variant
+- `_bugs` / `_patches` / `_instruct` / `_tests` / `_synthesis` — name of the artifact type for synthesized pipelines
 
 If anything in this file conflicts with the actual code, **trust the code** and fix this file.

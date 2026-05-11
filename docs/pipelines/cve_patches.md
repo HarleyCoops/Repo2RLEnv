@@ -1,4 +1,4 @@
-# `cve_mining`
+# `cve_patches`
 
 Map CVEs to fixing commits, replay pre-fix state, capture security PoC as the verifier.
 
@@ -57,10 +57,10 @@ class CVEMiningOptions(BaseModel):
     require_poc: bool = False
 ```
 
-## `[metadata.repo2env.cve_mining]` schema (planned)
+## `[metadata.repo2env.cve_patches]` schema (planned)
 
 ```toml
-[metadata.repo2env.cve_mining]
+[metadata.repo2env.cve_patches]
 cve_id = "CVE-2024-12345"
 cwe = "CWE-79"
 severity = "high"

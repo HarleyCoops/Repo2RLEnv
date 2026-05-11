@@ -37,7 +37,7 @@ class GenerationInput(BaseModel):
 ```bash
 repo2rlenv generate \
   --repo huggingface/trl \
-  --pipeline pr_mining_lite \
+  --pipeline pr_diff \
   --pipeline-opt limit=5 \
   --llm anthropic/claude-sonnet-4-6 \
   --out hf://AdithyaSK/trl-r2e-v0-1 \
@@ -52,7 +52,7 @@ repo:
   url: "huggingface/trl"
   access: "auto"
 pipeline:
-  name: "pr_mining_lite"
+  name: "pr_diff"
   options:
     limit: 5
     skip_drafts: true
@@ -83,7 +83,7 @@ Every pipeline emits **standard Harbor task directories**. Repo2RLEnv-specific p
 └── tests/test.sh            # OPTIONAL — only emitted by sandbox-required pipelines
 ```
 
-For the **lite** pipeline (`pr_mining_lite`), only the first three exist. No Docker, no test script — verification is purely diff-similarity against the oracle.
+For the **lite** pipeline (`pr_diff`), only the first three exist. No Docker, no test script — verification is purely diff-similarity against the oracle.
 
 ### `task.toml` example
 
@@ -101,7 +101,7 @@ category = "bugfix"
 
 [metadata.repo2env]
 spec_version = "0.1.0"
-pipeline = "pr_mining_lite"
+pipeline = "pr_diff"
 pipeline_version = "0.1.0"
 repo = "huggingface/trl"
 ref = "f39373edcd7a..."           # base commit SHA
@@ -112,7 +112,7 @@ synthesis_llm = "anthropic/claude-sonnet-4-6"
 content_hash = "sha256:..."
 reward_kinds = ["diff_similarity"]
 
-[metadata.repo2env.pr_mining_lite]
+[metadata.repo2env.pr_diff]
 pr_merged_at = "2026-05-05T13:46:07Z"
 diff_format = "unified"
 context_files = ["trl/trainer/dpo_trainer.py", ...]
@@ -153,8 +153,8 @@ Repo2RLEnv has **no sandbox abstraction of its own**. Generation-time execution 
 
 | Phase | Pipeline class | What runs the code |
 |---|---|---|
-| Generation | Lite (text-only, e.g. `pr_mining_lite`) | Nothing — pure text manipulation |
-| Generation | Full (`pr_mining`, `mutation`, etc.) | Harbor's sandbox layer (`harbor` invoked under the hood) |
+| Generation | Lite (text-only, e.g. `pr_diff`) | Nothing — pure text manipulation |
+| Generation | Full (`pr_runtime`, `mutation_bugs`, etc.) | Harbor's sandbox layer (`harbor` invoked under the hood) |
 | Consumption | Lite | Just call `repo2rlenv reward` — no sandbox needed |
 | Consumption | Full | `harbor run -d <dataset> -e <modal\|daytona\|e2b\|local\|runloop> ...` |
 
@@ -168,7 +168,7 @@ class GPUSpec(BaseModel):
     kind: Literal["any", "a10g", "a100", "h100", "l4", "t4"] = "any"
 ```
 
-GPU is only meaningful for **sandbox-required pipelines on ML repos** — e.g., mining `huggingface/trl` with full `pr_mining` will skip most interesting PRs unless the verifier sandbox has a GPU because the trainer tests require CUDA.
+GPU is only meaningful for **sandbox-required pipelines on ML repos** — e.g., mining `huggingface/trl` with full `pr_runtime` will skip most interesting PRs unless the verifier sandbox has a GPU because the trainer tests require CUDA.
 
 Lite pipelines never use this field. When set on a `harbor`-provider sandbox, we pass it through to the Harbor backend's GPU config (Modal A100 / H100 / etc.).
 

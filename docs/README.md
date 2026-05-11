@@ -1,12 +1,34 @@
 # Repo2RLEnv documentation
 
+Three tiers, depending on what you're here to do.
+
+## Start here
+
 | | |
 |---|---|
-| **[AUTH.md](./AUTH.md)** | GitHub auth (PAT / `gh` CLI) and brief notes on HF / LLM / E2B keys |
-| **[SPEC.md](./SPEC.md)** | Input contract (`GenerationInput`) and Harbor-shaped output contract |
-| **[API.md](./API.md)** | Python API reference for the modules in `src/repo2rlenv/` |
-| **[AGENTS.md](./AGENTS.md)** | The 22+ Harbor agent harnesses, their inputs (LLM endpoint, model, kwargs), and how RL traces / logprobs leave the sandbox |
-| **[BOOTSTRAP.md](./BOOTSTRAP.md)** | v0.2 design — how an LLM agent iterates on the per-repo Docker image |
-| **[pipelines/](./pipelines/)** | One doc per synthesis pipeline — implementation status, algorithm, inspiration repo |
+| **[quickstart.md](./quickstart.md)** | Install → generate your first dataset → push to HF Hub, in ~10 minutes |
+| **[pipelines/](./pipelines/README.md)** | One doc per synthesis pipeline — status, when to use, inputs, oracle, inspiration repo |
 
-For the high-level pitch, install instructions, and the comparison vs SWE-bench / SWE-smith, see the [project README](../README.md).
+## Reference
+
+Stable contracts and module-level API.
+
+| | |
+|---|---|
+| **[reference/SPEC.md](./reference/SPEC.md)** | Input contract (`GenerationInput`) + Harbor-shaped output contract |
+| **[reference/API.md](./reference/API.md)** | Python API reference for the modules in `src/repo2rlenv/` |
+| **[reference/AUTH.md](./reference/AUTH.md)** | GitHub auth (PAT / `gh` CLI) + HF / LLM key resolution |
+| **[reference/BOOTSTRAP.md](./reference/BOOTSTRAP.md)** | v0.2 — LLM agent that iterates the per-repo Docker image until tests run |
+| **[reference/AGENTS.md](./reference/AGENTS.md)** | The 22+ Harbor agent harnesses, their inputs, and how RL traces / logprobs leave the sandbox |
+
+## Contributing
+
+For people shipping new pipelines or extending the spec.
+
+| | |
+|---|---|
+| **[contributing/ADDING_A_PIPELINE.md](./contributing/ADDING_A_PIPELINE.md)** | Step-by-step cookbook for shipping a new synthesis pipeline (enum + Options + Pipeline class + tests + doc) |
+
+---
+
+For the project pitch, install instructions, and the comparison vs SWE-bench / SWE-smith, see the [project README](../README.md).

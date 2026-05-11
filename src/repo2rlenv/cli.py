@@ -355,7 +355,7 @@ repo:
   access: "auto"
 
 pipeline:
-  name: "pr_mining_lite"
+  name: "pr_diff"
   options:
     limit: 10
     skip_drafts: true

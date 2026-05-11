@@ -1,4 +1,4 @@
-# `mutation`
+# `mutation_bugs`
 
 SWE-smith-style: deliberately corrupt the code, keep mutations that break ≥1 test.
 

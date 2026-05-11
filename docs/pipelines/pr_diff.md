@@ -1,4 +1,4 @@
-# `pr_mining_lite`
+# `pr_diff`
 
 **SWE-RL-inspired text-only PR mining.** No Docker, no test execution at generation time.
 
@@ -10,8 +10,8 @@
 | Reward kinds emitted | `diff_similarity` |
 | Inspiration | [SWE-RL](https://github.com/facebookresearch/swe-rl) (Meta, NeurIPS '25) |
 | Reference clone | `references/swe-rl/` |
-| Implementation | [`src/repo2rlenv/pipelines/pr_mining_lite.py`](../../src/repo2rlenv/pipelines/pr_mining_lite.py) |
-| Options model | [`PRMiningLiteOptions`](../../src/repo2rlenv/spec/options.py) |
+| Implementation | [`src/repo2rlenv/pipelines/pr_diff.py`](../../src/repo2rlenv/pipelines/pr_diff.py) |
+| Options model | [`PRDiffOptions`](../../src/repo2rlenv/spec/options.py) |
 
 ## What it does
 
@@ -43,9 +43,9 @@ No environment is built. No tests are run. Verification is purely diff-similarit
 
 SWE-RL's key insight: you don't need to *execute* a PR's tests to get a useful training signal. The merged diff itself is high-quality ground truth — a sequence-similarity reward against the oracle is dense, fast, and scales to thousands of tasks per repo without provisioning containers.
 
-Trade-off vs full `pr_mining`:
+Trade-off vs full `pr_runtime`:
 
-| | `pr_mining_lite` | `pr_mining` |
+| | `pr_diff` | `pr_runtime` |
 |---|---|---|
 | Captures | code context + oracle diff | Dockerfile + tests + oracle + instruction |
 | Reward at training | `diff_similarity` (dense, no exec) | `test_execution` (binary, exec required) |
@@ -56,7 +56,7 @@ Trade-off vs full `pr_mining`:
 ## Options
 
 ```python
-class PRMiningLiteOptions(BaseModel):
+class PRDiffOptions(BaseModel):
     limit: int = 50
     since: date | None = None
     until: date | None = None
@@ -77,18 +77,18 @@ class PRMiningLiteOptions(BaseModel):
 | `context_window_loc` | `200` | Reserved — not yet used in v0.1 |
 | `diff_format` | `"unified"` | Reserved — `search_replace` reformatting not yet implemented |
 
-## `[metadata.repo2env.pr_mining_lite]` schema
+## `[metadata.repo2env.pr_diff]` schema
 
 Each emitted task carries this subtable inside `task.toml`:
 
 ```toml
-[metadata.repo2env.pr_mining_lite]
+[metadata.repo2env.pr_diff]
 pr_merged_at = "2026-05-05T13:46:07Z"
 diff_format = "unified"
 context_files = ["trl/trainer/dpo_trainer.py", "trl/trainer/_utils.py"]
 ```
 
-The standard `[metadata.repo2env]` parent subtable also carries `pipeline = "pr_mining_lite"`, `repo`, `ref` (base commit SHA), `reference` (PR URL), `source_access`, `built_at`, and `content_hash`.
+The standard `[metadata.repo2env]` parent subtable also carries `pipeline = "pr_diff"`, `repo`, `ref` (base commit SHA), `reference` (PR URL), `source_access`, `built_at`, and `content_hash`.
 
 ## Skip reasons
 
@@ -111,7 +111,7 @@ A PR may not become a task. The pipeline records counts of each skip reason in t
 # Local generation
 repo2rlenv generate \
   --repo huggingface/trl \
-  --pipeline pr_mining_lite \
+  --pipeline pr_diff \
   --pipeline-opt limit=5 \
   --pipeline-opt max_files_per_pr=10 \
   --llm anthropic/claude-sonnet-4-6 \
@@ -120,7 +120,7 @@ repo2rlenv generate \
 # Generate AND push to HF Hub in one command
 repo2rlenv generate \
   --repo huggingface/trl \
-  --pipeline pr_mining_lite \
+  --pipeline pr_diff \
   --pipeline-opt limit=5 \
   --llm anthropic/claude-sonnet-4-6 \
   --out hf://AdithyaSK/trl-r2e-v0-1 \
@@ -135,24 +135,24 @@ from pathlib import Path
 from repo2rlenv.spec.input import (
     GenerationInput, RepoSpec, PipelineSpec, LLMSpec, OutputSpec, PipelineName,
 )
-from repo2rlenv.spec.options import PRMiningLiteOptions
-from repo2rlenv.pipelines.pr_mining_lite import PRMiningLitePipeline
+from repo2rlenv.spec.options import PRDiffOptions
+from repo2rlenv.pipelines.pr_diff import PRDiffPipeline
 
 g = GenerationInput(
     repo=RepoSpec(url="huggingface/trl", access="auto"),
-    pipeline=PipelineSpec(name=PipelineName.PR_MINING_LITE, options={}),
+    pipeline=PipelineSpec(name=PipelineName.PR_DIFF, options={}),
     llm=LLMSpec(provider="anthropic", model="claude-sonnet-4-6"),
     output=OutputSpec(destination="./out", org="myorg", dataset_name="trl-r2e"),
 )
-options = PRMiningLiteOptions(limit=5, max_files_per_pr=10)
+options = PRDiffOptions(limit=5, max_files_per_pr=10)
 
-pipeline = PRMiningLitePipeline(g, options)
+pipeline = PRDiffPipeline(g, options)
 result = pipeline.run(Path("./out"))
 
 print(result.candidates, result.emitted, result.skip_reasons)
 ```
 
-## Consuming a `pr_mining_lite` dataset
+## Consuming a `pr_diff` dataset
 
 The oracle is at `solution/patch.diff` in every task. Score a candidate prediction with:
 
@@ -169,7 +169,7 @@ Or via CLI:
 repo2rlenv reward --task ./out/<task-id> --prediction ./candidate.diff
 ```
 
-That's the full consumer-side loop for a lite task — no Docker, no sandbox needed. If you want to actually *exercise* an agent against the repo (clone, edit, capture diff), spin up your own sandbox or use `harbor run` once we ship the full `pr_mining` variant.
+That's the full consumer-side loop for a lite task — no Docker, no sandbox needed. If you want to actually *exercise* an agent against the repo (clone, edit, capture diff), spin up your own sandbox or use `harbor run` once we ship the full `pr_runtime` variant.
 
 ## Limitations (v0.1)
 

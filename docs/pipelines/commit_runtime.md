@@ -1,4 +1,4 @@
-# `commit_mining`
+# `commit_runtime`
 
 R2E-Gym SWE-GEN-style: walk **commits**, not PRs. Trades signal quality for yield — no PR-review filter, much larger candidate pool.
 
@@ -19,7 +19,7 @@ R2E-Gym's paper finding: *"instead of using human-written PRs, good-quality exec
 - Yields a much larger candidate pool
 - Has noisier signal per task (no human reviewed it)
 
-`commit_mining` is a **sibling** of `pr_mining`, not a replacement. They produce complementary task pools.
+`commit_runtime` is a **sibling** of `pr_runtime`, not a replacement. They produce complementary task pools.
 
 ## Algorithm sketch
 

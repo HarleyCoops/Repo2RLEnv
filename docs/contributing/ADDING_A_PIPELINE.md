@@ -1,6 +1,6 @@
 # Cookbook: adding a new pipeline
 
-Step-by-step walkthrough for shipping a new synthesis pipeline. Use [`pr_mining_lite`](../../src/repo2rlenv/pipelines/pr_mining_lite.py) as the canonical reference implementation throughout.
+Step-by-step walkthrough for shipping a new synthesis pipeline. Use [`pr_diff`](../../src/repo2rlenv/pipelines/pr_diff.py) as the canonical reference implementation throughout.
 
 ## What you're building
 
@@ -17,7 +17,7 @@ The whole thing is typically 100–300 LOC. Lite (text-only) pipelines are at th
 
 ## Prerequisites
 
-- A name for your pipeline (lowercase snake_case, e.g. `commit_mining`)
+- A name for your pipeline (lowercase snake_case, e.g. `commit_runtime`)
 - A clear answer to: does it need a sandbox at generation time? Does it need an LLM?
 - A reference repo or paper you're drawing inspiration from, cloned to `references/<name>/`
 
@@ -29,8 +29,8 @@ Edit [`src/repo2rlenv/spec/input.py`](../../src/repo2rlenv/spec/input.py):
 
 ```python
 class PipelineName(StrEnum):
-    PR_MINING_LITE = "pr_mining_lite"
-    PR_MINING = "pr_mining"
+    PR_DIFF = "pr_diff"
+    PR_RUNTIME = "pr_runtime"
     YOUR_PIPELINE = "your_pipeline"          # ← add this
 ```
 
@@ -49,13 +49,13 @@ class YourPipelineOptions(_BaseOptions):
 
 # Register at the bottom of the file
 OPTIONS_REGISTRY: dict[str, type[_BaseOptions]] = {
-    "pr_mining": PRMiningOptions,
-    "pr_mining_lite": PRMiningLiteOptions,
+    "pr_runtime": PRRuntimeOptions,
+    "pr_diff": PRDiffOptions,
     "your_pipeline": YourPipelineOptions,    # ← add this
 }
 ```
 
-**Conventions** (lifted from `pr_mining_lite`):
+**Conventions** (lifted from `pr_diff`):
 
 - `limit: int` — default 50–100; over-fetch ~3× internally so filtering doesn't shrink to zero
 - Date filters: `since: date | None` and `until: date | None`
@@ -70,7 +70,7 @@ Create `src/repo2rlenv/pipelines/your_pipeline.py`. Skeleton:
 """<one-line description of what this pipeline does>.
 
 Acknowledgment block — required if you're drawing on external work.
-See pr_mining_lite.py for the format.
+See pr_diff.py for the format.
 """
 
 from __future__ import annotations
@@ -201,7 +201,7 @@ Edit [`src/repo2rlenv/pipelines/__init__.py`](../../src/repo2rlenv/pipelines/__i
 from repo2rlenv.pipelines.your_pipeline import YourPipeline
 
 PIPELINES: dict[str, type[Pipeline]] = {
-    "pr_mining_lite": PRMiningLitePipeline,
+    "pr_diff": PRDiffPipeline,
     "your_pipeline": YourPipeline,           # ← add this
 }
 ```
@@ -253,7 +253,7 @@ uv run repo2rlenv generate \
 
 ### 7. Write the doc
 
-Add `docs/pipelines/your_pipeline.md`. Mirror the structure of [`pr_mining_lite.md`](./pr_mining_lite.md):
+Add `docs/pipelines/your_pipeline.md`. Mirror the structure of [`pr_diff.md`](../pipelines/pr_diff.md):
 
 - A 1-row metadata table (status, sandbox required, LLM required, reward kinds, inspiration, reference clone, implementation file, options model)
 - A Mermaid `flowchart TD` showing the algorithm — including skip/fail edges, not just the happy path
@@ -263,11 +263,11 @@ Add `docs/pipelines/your_pipeline.md`. Mirror the structure of [`pr_mining_lite.
 - CLI + Python example invocations
 - "Limitations" section
 
-Then update [`docs/pipelines/README.md`](./README.md): add a row for your pipeline in the status table + a row in the reward-kinds table.
+Then update [`docs/pipelines/README.md`](../pipelines/README.md): add a row for your pipeline in the status table + a row in the reward-kinds table.
 
 ### 8. (Optional) acknowledgments
 
-If your pipeline draws code or algorithms from external work, add an "Acknowledgment" block at the top of your `.py` file matching the format in `reward.py` / `pr_mining_lite.py`. Be explicit about:
+If your pipeline draws code or algorithms from external work, add an "Acknowledgment" block at the top of your `.py` file matching the format in `reward.py` / `pr_diff.py`. Be explicit about:
 
 - Which paper/repo inspired the approach
 - Their license
@@ -287,7 +287,7 @@ discover() ─▶ filter ─▶ build_task() ─▶ (optional QA) ─▶ write_h
 
 Each stage is independently testable. Keep `_discover` pure (network IO only), `_should_skip` pure (deterministic predicates), `_build_task` pure (no side effects), `write_harbor_task` is the only filesystem write.
 
-## Common patterns from `pr_mining_lite`
+## Common patterns from `pr_diff`
 
 - **Over-fetch then filter client-side** — `gh pr list --limit (limit*3)`, then trim after applying `since`/`until`/`max_files_per_pr`. GitHub's API doesn't always honor compound filters cleanly.
 - **Stable task IDs** — `<owner>__<repo>-<number>`. Same input ⇒ same output ⇒ idempotent re-runs.

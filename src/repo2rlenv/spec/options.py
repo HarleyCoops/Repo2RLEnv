@@ -12,7 +12,9 @@ class _BaseOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class PRMiningOptions(_BaseOptions):
+class PRRuntimeOptions(_BaseOptions):
+    """Sandbox-verified PR mining: clones, applies diff, runs tests in bootstrap image."""
+
     limit: int = 100
     since: date | None = None
     until: date | None = None
@@ -22,8 +24,8 @@ class PRMiningOptions(_BaseOptions):
     base_image_template: str | None = None
 
 
-class PRMiningLiteOptions(_BaseOptions):
-    """SWE-RL-style: text-only, no execution, no Docker."""
+class PRDiffOptions(_BaseOptions):
+    """SWE-RL-style: text-only PR mining, no execution, no Docker."""
 
     limit: int = 50
     since: date | None = None
@@ -36,8 +38,8 @@ class PRMiningLiteOptions(_BaseOptions):
 
 
 OPTIONS_REGISTRY: dict[str, type[_BaseOptions]] = {
-    "pr_mining": PRMiningOptions,
-    "pr_mining_lite": PRMiningLiteOptions,
+    "pr_runtime": PRRuntimeOptions,
+    "pr_diff": PRDiffOptions,
 }
 
 

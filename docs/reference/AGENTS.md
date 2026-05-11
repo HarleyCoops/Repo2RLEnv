@@ -313,7 +313,7 @@ Path A is cheaper and cleaner; Path B works for any harness that talks to an Ope
 
 When we ship full pipelines (v0.2+), the loop looks like:
 
-1. Generate dataset with `repo2rlenv generate ... --pipeline pr_mining`
+1. Generate dataset with `repo2rlenv generate ... --pipeline pr_runtime`
 2. Push to HF Hub
 3. User trains with their RL framework of choice:
    ```python
@@ -334,8 +334,8 @@ The only RL-relevant Repo2RLEnv concern is **emitting tasks tagged with the righ
 
 | Pipeline class | Reward kinds emitted | Rollout pipe used? |
 |---|---|---|
-| Lite (`pr_mining_lite`) | `diff_similarity` only | No — trainer compares text directly |
-| Full (`pr_mining`, `mutation`, etc.) | `test_execution` (and optionally `diff_similarity`) | Yes — full Harbor rollout pipe |
+| Lite (`pr_diff`) | `diff_similarity` only | No — trainer compares text directly |
+| Full (`pr_runtime`, `mutation_bugs`, etc.) | `test_execution` (and optionally `diff_similarity`) | Yes — full Harbor rollout pipe |
 
 For TRL specifically (HF's RL library), no Harbor integration exists in the upstream cookbook today. Building a thin TRL adapter is on our v0.3 roadmap and is a small isolated piece — it just maps Harbor's `(prompt_ids, completion_ids, logprobs, reward)` quadruple into TRL's `RolloutGenerator` interface.
 

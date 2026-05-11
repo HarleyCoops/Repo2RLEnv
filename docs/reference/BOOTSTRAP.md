@@ -1,8 +1,8 @@
 # Environment Bootstrap (v0.2)
 
-Design doc for the **bootstrap phase** that all sandbox-required pipelines (`pr_mining`, `mutation`, `commit_mining`, `oss_instruct`, `equivalence_tests`, `cve_mining`) share.
+Design doc for the **bootstrap phase** that all sandbox-required pipelines (`pr_runtime`, `mutation_bugs`, `commit_runtime`, `code_instruct`, `equivalence_tests`, `cve_patches`) share.
 
-> Status: **planned for v0.2**. Lite pipelines (`pr_mining_lite`) don't need this. `pr_mining_lite` shipped without bootstrap and runs without Docker.
+> Status: **planned for v0.2**. Lite pipelines (`pr_diff`) don't need this. `pr_diff` shipped without bootstrap and runs without Docker.
 
 ## The problem
 
@@ -86,10 +86,10 @@ Two equivalent invocation patterns — implicit (default) and explicit (debuggin
 ### Implicit — bootstrap fires automatically when needed
 
 ```bash
-# Cache miss → run bootstrap, then run pr_mining; cache hit → just run pr_mining
+# Cache miss → run bootstrap, then run pr_runtime; cache hit → just run pr_runtime
 repo2rlenv generate \
   --repo huggingface/trl \
-  --pipeline pr_mining \
+  --pipeline pr_runtime \
   --pipeline-opt limit=100 \
   --llm anthropic/claude-sonnet-4-6 \
   --image-registry ghcr.io/myorg/r2e-trl \
@@ -111,7 +111,7 @@ repo2rlenv bootstrap \
 # Phase 2 with the cached env
 repo2rlenv generate \
   --repo huggingface/trl \
-  --pipeline pr_mining \
+  --pipeline pr_runtime \
   --env-from ./envs/trl/ \
   --out hf://AdithyaSK/trl-r2e
 ```
@@ -172,7 +172,7 @@ Each sandbox-required pipeline calls a shared `ensure_bootstrap()` helper at the
 
 ```python
 class PRMiningPipeline:
-    name: ClassVar[PipelineName] = PipelineName.PR_MINING
+    name: ClassVar[PipelineName] = PipelineName.PR_RUNTIME
 
     def run(self, out_dir: Path) -> PipelineResult:
         # Phase 1 (cached)
@@ -301,10 +301,10 @@ That's enough to **rebuild from scratch if the registry image is ever lost** (`D
 - [ ] `src/repo2rlenv/bootstrap/cache.py` — load/save under `./envs/`
 - [ ] `src/repo2rlenv/bootstrap/runner.py` — `ensure_bootstrap()` + RepoLaunch adapter
 - [ ] `repo2rlenv bootstrap` CLI subcommand
-- [ ] Hook into `pr_mining` (the first sandbox-required pipeline to ship)
+- [ ] Hook into `pr_runtime` (the first sandbox-required pipeline to ship)
 - [ ] Per-task `[metadata.repo2env.bootstrap]` schema
 - [ ] Conformance test in `tests/test_pipeline_contract.py` — sandbox-required pipelines must call `ensure_bootstrap()` before emitting tasks
-- [ ] Doc updates: SPEC.md (new fields), API.md (new module), pipelines/pr_mining.md (link to this doc)
+- [ ] Doc updates: SPEC.md (new fields), API.md (new module), pipelines/pr_runtime.md (link to this doc)
 
 ## See also
 

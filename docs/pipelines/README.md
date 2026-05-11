@@ -21,14 +21,14 @@ flowchart LR
 
 | Pipeline | Status | Sandbox at gen | GPU helpful? | LLM at gen | Inspiration |
 |---|---|:-:|:-:|:-:|---|
-| [`pr_mining_lite`](./pr_mining_lite.md) | **implemented** | No | No | Optional | [SWE-RL](https://github.com/facebookresearch/swe-rl) |
-| [`pr_mining`](./pr_mining.md) | planned | Harbor | If repo's tests need it (ML repos) | Optional | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
-| [`commit_mining`](./commit_mining.md) | planned | Harbor | If repo's tests need it | Yes | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) |
-| [`mutation`](./mutation.md) | planned | Harbor | Same as test suite | Yes | [SWE-smith](https://github.com/SWE-bench/SWE-smith) |
-| [`oss_instruct`](./oss_instruct.md) | planned | Harbor | Sometimes | Yes | [Magicoder](https://github.com/ise-uiuc/magicoder) |
+| [`pr_diff`](./pr_diff.md) | **implemented** | No | No | Optional | [SWE-RL](https://github.com/facebookresearch/swe-rl) |
+| [`pr_runtime`](./pr_runtime.md) | planned | Harbor | If repo's tests need it (ML repos) | Optional | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
+| [`commit_runtime`](./commit_runtime.md) | planned | Harbor | If repo's tests need it | Yes | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) |
+| [`mutation_bugs`](./mutation_bugs.md) | planned | Harbor | Same as test suite | Yes | [SWE-smith](https://github.com/SWE-bench/SWE-smith) |
+| [`code_instruct`](./code_instruct.md) | planned | Harbor | Sometimes | Yes | [Magicoder](https://github.com/ise-uiuc/magicoder) |
 | [`equivalence_tests`](./equivalence_tests.md) | planned | Harbor | If function uses GPU | Yes | [R2E](https://github.com/r2e-project/r2e) |
-| [`live_pr_mining`](./live_pr_mining.md) | planned | Harbor | Same as `pr_mining` | Optional | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) + [RepoLaunch](https://github.com/microsoft/RepoLaunch) |
-| [`cve_mining`](./cve_mining.md) | planned | Harbor | Rarely | Yes | [PatchSeeker](https://github.com/hungkien05/PatchSeeker) / CVE-Bench |
+| [`pr_stream`](./pr_stream.md) | planned | Harbor | Same as `pr_runtime` | Optional | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) + [RepoLaunch](https://github.com/microsoft/RepoLaunch) |
+| [`cve_patches`](./cve_patches.md) | planned | Harbor | Rarely | Yes | [PatchSeeker](https://github.com/hungkien05/PatchSeeker) / CVE-Bench |
 | [`refactor_synthesis`](./refactor_synthesis.md) | planned | Harbor | Rarely | Yes | RefactoringMiner |
 
 **Sandbox column legend**: "No" = pure text manipulation, no execution. "Harbor" = we delegate to Harbor's sandbox layer (Local Docker / Modal / Daytona / E2B / Runloop). We don't maintain a parallel abstraction.
@@ -39,21 +39,21 @@ The reference repos are cloned shallowly to `references/` (gitignored).
 
 | Pipeline | `diff_similarity` | `test_execution` |
 |---|:-:|:-:|
-| `pr_mining_lite` | ✅ | — |
-| `pr_mining` | ✅ | ✅ |
-| `commit_mining` | ✅ | ✅ |
-| `mutation` | (oracle as diff) | ✅ |
-| `oss_instruct` | optional | ✅ |
+| `pr_diff` | ✅ | — |
+| `pr_runtime` | ✅ | ✅ |
+| `commit_runtime` | ✅ | ✅ |
+| `mutation_bugs` | (oracle as diff) | ✅ |
+| `code_instruct` | optional | ✅ |
 | `equivalence_tests` | — | ✅ |
-| `live_pr_mining` | ✅ | ✅ |
-| `cve_mining` | ✅ | ✅ |
+| `pr_stream` | ✅ | ✅ |
+| `cve_patches` | ✅ | ✅ |
 | `refactor_synthesis` | — | ✅ |
 
 `diff_similarity` works without a sandbox; `test_execution` requires one.
 
 ## Adding a new pipeline
 
-See the **[cookbook](./ADDING_A_PIPELINE.md)** for the full step-by-step walkthrough — covers the enum + Options + Pipeline class + tests + doc page, with template snippets and conventions taken from `pr_mining_lite`.
+See the **[cookbook](../contributing/ADDING_A_PIPELINE.md)** for the full step-by-step walkthrough — covers the enum + Options + Pipeline class + tests + doc page, with template snippets and conventions taken from `pr_diff`.
 
 TL;DR: every pipeline must satisfy the [`Pipeline` Protocol](../../src/repo2rlenv/pipelines/base.py):
 

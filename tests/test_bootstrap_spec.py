@@ -35,7 +35,7 @@ def test_platform_constrained():
 def test_bootstrap_included_in_generation_input_default():
     g = GenerationInput(
         repo=RepoSpec(url="huggingface/trl"),
-        pipeline=PipelineSpec(name=PipelineName.PR_MINING_LITE, options={}),
+        pipeline=PipelineSpec(name=PipelineName.PR_DIFF, options={}),
         llm=LLMSpec(provider="anthropic", model="claude-sonnet-4-6"),
         output=OutputSpec(destination="./out", org="x", dataset_name="y"),
     )

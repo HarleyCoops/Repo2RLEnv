@@ -16,7 +16,7 @@ def _make_task(name: str = "demo__repo-1") -> HarborTask:
         instruction="# Issue\n\nfix the bug",
         oracle_diff="--- a/x.py\n+++ b/x.py\n@@\n-1\n+2\n",
         repo2env={
-            "pipeline": "pr_mining_lite",
+            "pipeline": "pr_diff",
             "pipeline_version": "0.1.0",
             "repo": "demo/repo",
         },
@@ -40,7 +40,7 @@ def test_task_toml_is_valid_toml_with_harbor_layout(tmp_path: Path):
     assert data["task"]["name"] == "demo__repo-1"
     assert data["task"]["org"] == "myorg"
     r2e = data["metadata"]["repo2env"]
-    assert r2e["pipeline"] == "pr_mining_lite"
+    assert r2e["pipeline"] == "pr_diff"
     assert r2e["spec_version"] == "0.1.0"
     assert r2e["content_hash"].startswith("sha256:")
     assert "diff_similarity" in r2e["reward_kinds"]

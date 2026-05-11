@@ -6,8 +6,8 @@ import pytest
 
 from repo2rlenv.spec.input import GenerationInput, PipelineName, RepoSpec
 from repo2rlenv.spec.options import (
-    PRMiningLiteOptions,
-    PRMiningOptions,
+    PRDiffOptions,
+    PRRuntimeOptions,
     parse_options,
 )
 
@@ -32,7 +32,7 @@ def test_full_input_roundtrips():
     payload = {
         "spec_version": "0.1.0",
         "repo": {"url": "huggingface/trl", "access": "auto"},
-        "pipeline": {"name": "pr_mining_lite", "options": {"limit": 5}},
+        "pipeline": {"name": "pr_diff", "options": {"limit": 5}},
         "llm": {"provider": "anthropic", "model": "claude-sonnet-4-6"},
         "output": {
             "destination": "./out",
@@ -42,17 +42,17 @@ def test_full_input_roundtrips():
     }
     g = GenerationInput.model_validate(payload)
     assert g.repo.owner_name == ("huggingface", "trl")
-    assert g.pipeline.name == PipelineName.PR_MINING_LITE
+    assert g.pipeline.name == PipelineName.PR_DIFF
 
 
 def test_options_strict_extra_forbidden():
     with pytest.raises(Exception):
-        PRMiningLiteOptions(limit=10, unknown_field=42)
+        PRDiffOptions(limit=10, unknown_field=42)
 
 
 def test_parse_options_dispatches_correctly():
-    opts = parse_options("pr_mining_lite", {"limit": 7, "skip_drafts": False})
-    assert isinstance(opts, PRMiningLiteOptions)
+    opts = parse_options("pr_diff", {"limit": 7, "skip_drafts": False})
+    assert isinstance(opts, PRDiffOptions)
     assert opts.limit == 7
     assert opts.skip_drafts is False
 

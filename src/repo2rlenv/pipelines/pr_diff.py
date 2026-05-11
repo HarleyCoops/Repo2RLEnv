@@ -49,7 +49,7 @@ from repo2rlenv.github import (
 )
 from repo2rlenv.pipelines.base import PipelineResult
 from repo2rlenv.spec.input import GenerationInput, PipelineName
-from repo2rlenv.spec.options import PRMiningLiteOptions
+from repo2rlenv.spec.options import PRDiffOptions
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +77,12 @@ def _build_instruction(pr: PullRequestSummary) -> str:
     )
 
 
-class PRMiningLitePipeline:
+class PRDiffPipeline:
     """No-sandbox, text-only PR mining. Implements the `Pipeline` Protocol."""
 
-    name: ClassVar[PipelineName] = PipelineName.PR_MINING_LITE
+    name: ClassVar[PipelineName] = PipelineName.PR_DIFF
 
-    def __init__(self, input: GenerationInput, options: PRMiningLiteOptions):
+    def __init__(self, input: GenerationInput, options: PRDiffOptions):
         self.input = input
         self.options = options
         self._progress_cb = None  # set via set_progress_callback for live UI
@@ -180,7 +180,7 @@ class PRMiningLitePipeline:
         task_id = f"{owner}__{name}-{pr.number}"
 
         repo2env = {
-            "pipeline": "pr_mining_lite",
+            "pipeline": "pr_diff",
             "pipeline_version": "0.1.0",
             "repo": f"{owner}/{name}",
             "ref": pr.base_sha,
@@ -188,7 +188,7 @@ class PRMiningLitePipeline:
             "source_access": self.input.repo.access,
             "built_at": datetime.now(timezone.utc).isoformat(),
             "synthesis_llm": self.input.llm.qualified_name,
-            "pr_mining_lite": {
+            "pr_diff": {
                 "pr_merged_at": pr.merged_at,
                 "diff_format": self.options.diff_format,
                 "context_files": pr.changed_files,
@@ -204,5 +204,5 @@ class PRMiningLitePipeline:
             repo2env=repo2env,
             difficulty="medium",
             category="bugfix",
-            keywords=[name, "pr_mining_lite"],
+            keywords=[name, "pr_diff"],
         )

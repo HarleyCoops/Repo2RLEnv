@@ -1,4 +1,4 @@
-# `pr_mining`
+# `pr_runtime`
 
 Full SWE-bench-style PR mining. Builds a Docker env per task, runs the test suite, identifies fail-to-pass tests as the verifier oracle.
 
@@ -30,25 +30,25 @@ flowchart TD
 ```
 
 1. Clone repo at base commit
-2. List merged PRs (same `gh pr list` path as `pr_mining_lite`)
+2. List merged PRs (same `gh pr list` path as `pr_diff`)
 3. For each PR: build a Docker env at the parent commit using a per-language template
 4. Apply the oracle patch in the container, run the test suite
 5. Identify **fail-to-pass** tests (failed before the patch, pass after) and **pass-to-pass** tests (regression guard)
 6. Emit a Harbor task: `task.toml` + `instruction.md` + `environment/Dockerfile` + `tests/test.sh` + `solution/patch.diff`
 7. QA gate: determinism + oracle consistency + LLM judge + false-negative filter (the SWE-Bench++ four-layer recipe)
 
-## Difference vs `pr_mining_lite`
+## Difference vs `pr_diff`
 
-`pr_mining_lite` skips steps 3–5 entirely. The full pipeline is what gives you `test_execution` reward — actually running the tests in a sandbox to get a binary pass/fail signal.
+`pr_diff` skips steps 3–5 entirely. The full pipeline is what gives you `test_execution` reward — actually running the tests in a sandbox to get a binary pass/fail signal.
 
 ## Prerequisite: bootstrap
 
-Before this pipeline runs, the **bootstrap phase** must have produced a working Docker image for the repo (an LLM agent iterates on the Dockerfile via [RepoLaunch](https://github.com/microsoft/RepoLaunch)). Bootstrap runs once per `(repo, ref)` and is cached. See [`docs/BOOTSTRAP.md`](../BOOTSTRAP.md) for the full design. Implicit: triggered automatically on cache miss. Explicit: run `repo2rlenv bootstrap --repo ... --out ./envs/foo/` first, then `repo2rlenv generate --pipeline pr_mining --env-from ./envs/foo/`.
+Before this pipeline runs, the **bootstrap phase** must have produced a working Docker image for the repo (an LLM agent iterates on the Dockerfile via [RepoLaunch](https://github.com/microsoft/RepoLaunch)). Bootstrap runs once per `(repo, ref)` and is cached. See [`docs/BOOTSTRAP.md`](../reference/BOOTSTRAP.md) for the full design. Implicit: triggered automatically on cache miss. Explicit: run `repo2rlenv bootstrap --repo ... --out ./envs/foo/` first, then `repo2rlenv generate --pipeline pr_runtime --env-from ./envs/foo/`.
 
 ## Options (planned)
 
 ```python
-class PRMiningOptions(BaseModel):
+class PRRuntimeOptions(BaseModel):
     limit: int = 100
     since: date | None = None
     until: date | None = None
@@ -58,10 +58,10 @@ class PRMiningOptions(BaseModel):
     base_image_template: str | None = None  # override per-language Dockerfile template
 ```
 
-## `[metadata.repo2env.pr_mining]` schema (planned)
+## `[metadata.repo2env.pr_runtime]` schema (planned)
 
 ```toml
-[metadata.repo2env.pr_mining]
+[metadata.repo2env.pr_runtime]
 pr_merged_at = "..."
 fail_to_pass = ["test_foo", "test_bar"]
 pass_to_pass = ["test_baz"]

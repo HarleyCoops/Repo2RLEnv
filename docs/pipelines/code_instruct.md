@@ -1,4 +1,4 @@
-# `oss_instruct`
+# `code_instruct`
 
 Magicoder OSS-Instruct, but **grounded in a specific target repo**. The LLM proposes plausible coding tasks seeded by the repo's actual code, then we synthesize a verifier and validate by execution.
 

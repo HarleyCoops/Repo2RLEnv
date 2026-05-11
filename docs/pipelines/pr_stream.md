@@ -1,17 +1,17 @@
-# `live_pr_mining`
+# `pr_stream`
 
-`pr_mining` with a scheduler. Continuously pulls post-cutoff PRs against any repo for contamination-resistant streams.
+`pr_runtime` with a scheduler. Continuously pulls post-cutoff PRs against any repo for contamination-resistant streams.
 
 | | |
 |---|---|
 | Status | **planned** |
-| Sandbox required at gen | Yes (delegates to `pr_mining`) |
+| Sandbox required at gen | Yes (delegates to `pr_runtime`) |
 | LLM required at gen | Optional |
 | Reward kinds emitted | `test_execution`, `diff_similarity` |
 | Inspiration | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) + [RepoLaunch](https://github.com/microsoft/RepoLaunch) (Microsoft, NeurIPS '25) |
 | Reference clones | `references/SWE-bench-Live/`, `references/RepoLaunch/` |
 
-## What "live" adds over `pr_mining`
+## What "live" adds over `pr_runtime`
 
 The per-PR pipeline is identical. The wrapper is a scheduler that:
 
@@ -27,7 +27,7 @@ flowchart TD
     B --> C[gh pr list since=watermark]
     C --> D{New PRs?}
     D -- no --> E[Sleep until next tick]
-    D -- yes --> F[Run pr_mining<br/>on the new PRs]
+    D -- yes --> F[Run pr_runtime<br/>on the new PRs]
     F --> G[Append tasks to existing<br/>HF Hub dataset]
     G --> H[Update registry.json<br/>with new commit SHA]
     H --> I[Advance watermark]
@@ -41,10 +41,10 @@ flowchart TD
 
 ## Options (planned)
 
-Inherits `PRMiningOptions` plus:
+Inherits `PRRuntimeOptions` plus:
 
 ```python
-class LivePRMiningOptions(PRMiningOptions):
+class LivePRRuntimeOptions(PRRuntimeOptions):
     poll_interval_hours: int = 24
     cutoff_date: date                    # only PRs merged after this
     max_age_days: int = 30

@@ -148,7 +148,7 @@ def push_to_hub(
     auth: AuthSpec,
     *,
     private: bool = False,
-    pipeline: str = "pr_mining_lite",
+    pipeline: str = "pr_diff",
     repo_source: str = "",
     description: str = "",
     commit_message: str | None = None,

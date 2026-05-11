@@ -10,14 +10,16 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class PipelineName(StrEnum):
-    PR_MINING_LITE = "pr_mining_lite"
-    PR_MINING = "pr_mining"
-    COMMIT_MINING = "commit_mining"
-    MUTATION = "mutation"
-    OSS_INSTRUCT = "oss_instruct"
+    # Mined from upstream history
+    PR_DIFF = "pr_diff"             # text-only PR mining (was: pr_mining_lite)
+    PR_RUNTIME = "pr_runtime"       # PR mining w/ sandbox verification (was: pr_mining)
+    PR_STREAM = "pr_stream"         # continuous live PR mining (was: live_pr_mining)
+    COMMIT_RUNTIME = "commit_runtime"   # commit-level mining w/ sandbox (was: commit_mining)
+    CVE_PATCHES = "cve_patches"     # CVE patches as training data (was: cve_mining)
+    # Synthesized by LLM
+    CODE_INSTRUCT = "code_instruct"     # OSS-Instruct-style (was: oss_instruct)
+    MUTATION_BUGS = "mutation_bugs" # synthetic bug injection (was: mutation)
     EQUIVALENCE_TESTS = "equivalence_tests"
-    LIVE_PR_MINING = "live_pr_mining"
-    CVE_MINING = "cve_mining"
     REFACTOR_SYNTHESIS = "refactor_synthesis"
 
 
@@ -92,7 +94,7 @@ class SandboxSpec(BaseModel):
     - `provider="none"` (default for lite pipelines) — no execution at gen
       time. Lite consumption is also runtime-free (just `repo2rlenv reward`).
 
-    - `provider="harbor"` (full pipelines like `pr_mining`) — at gen time we
+    - `provider="harbor"` (full pipelines like `pr_runtime`) — at gen time we
       shell out to `harbor` with `harbor_provider` selecting the underlying
       backend (Local Docker / Modal / Daytona / E2B / Runloop). Consumers
       run tasks via `harbor run -d <dataset> -e <provider> ...` directly.
@@ -110,7 +112,7 @@ class SandboxSpec(BaseModel):
 class GPUSpec(BaseModel):
     """GPU request, lowered to the Harbor provider's native config.
 
-    Only meaningful for full sandbox-required pipelines (`pr_mining` etc.)
+    Only meaningful for full sandbox-required pipelines (`pr_runtime` etc.)
     on ML repositories whose test suites require CUDA. Lite pipelines never
     use this. Provider support varies:
       - Modal:   rich (a10g, a100, h100, ...)
