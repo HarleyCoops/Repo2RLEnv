@@ -59,11 +59,11 @@ Different methods to manufacture verifiable tasks from a repo. Pick one, run it,
 |---|:-:|:-:|---|:-:|
 | `pr_diff` | ✅ | — | [SWE-RL](https://github.com/facebookresearch/swe-rl) | [📄](./docs/pipelines/pr_diff.md) |
 | `pr_runtime` | ✅ | ✓ | [SWE-bench](https://github.com/SWE-bench/SWE-bench) | [📄](./docs/pipelines/pr_runtime.md) |
-| `commit_runtime` | planned | ✓ | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) | [📄](./docs/pipelines/commit_runtime.md) |
+| `pr_stream` | ✅ | ✓ | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) | [📄](./docs/pipelines/pr_stream.md) |
+| `commit_runtime` | ✅ | ✓ | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) | [📄](./docs/pipelines/commit_runtime.md) |
 | `mutation_bugs` | planned | ✓ | [SWE-smith](https://github.com/SWE-bench/SWE-smith) | [📄](./docs/pipelines/mutation_bugs.md) |
 | `code_instruct` | planned | ✓ | [Magicoder / OSS-Instruct](https://github.com/ise-uiuc/magicoder) | [📄](./docs/pipelines/code_instruct.md) |
 | `equivalence_tests` | planned | ✓ | [R2E](https://github.com/r2e-project/r2e) | [📄](./docs/pipelines/equivalence_tests.md) |
-| `pr_stream` | planned | ✓ | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) | [📄](./docs/pipelines/pr_stream.md) |
 | `cve_patches` | planned | ✓ | [PatchSeeker / CVE-Bench](https://github.com/hungkien05/PatchSeeker) | [📄](./docs/pipelines/cve_patches.md) |
 | `refactor_synthesis` | planned | ✓ | RefactoringMiner | [📄](./docs/pipelines/refactor_synthesis.md) |
 
@@ -147,8 +147,10 @@ Pre-alpha.
 
 - **v0.1** shipped on PyPI: `pr_diff` + HF Hub publish + diff-similarity reward, end-to-end on any GitHub repo (public or private).
 - **v0.2** in main: bootstrap phase (LLM-driven Docker env), unified Rich UI, content-addressed cache, registry-qualified pullable digests.
-- **v0.3** in main: `pr_runtime` pipeline (sandbox-verified PR mining with `FAIL_TO_PASS` / `PASS_TO_PASS` oracle), auto-triggered bootstrap, structural quality filters (`ci_only_patch`, `no_new_test_funcs`, path-component test classifier), targeted test invocation. 115/115 tests passing.
-- **v0.4 planned**: polyglot log parsers (JS/Go/Rust), parallel per-PR validation, LLM-judged QA gate (SWE-Bench++ four-layer recipe).
+- **v0.3** shipped on PyPI: `pr_runtime` pipeline (sandbox-verified PR mining with `FAIL_TO_PASS` / `PASS_TO_PASS` oracle), auto-triggered bootstrap, structural quality filters, targeted test invocation.
+- **v0.4** shipped on PyPI: polyglot log parsers (Go / Cargo / Jest), Harbor end-to-end verification (Mean reward 1.0 on Go via `urfave/cli`).
+- **v0.5** in main: `pr_stream` (continuous PR mining, watermark-based) + `commit_runtime` (commit-level mining, SWE-GEN style); defensive git install in emitted Dockerfile so any bootstrap base image works. Harbor-verified on both. 196/196 tests passing.
+- **v0.6 planned**: `mutation_bugs` (first LLM-synthesized pipeline) + LLM-judged QA gate (SWE-Bench++ four-layer recipe) + HF Hub append-mode for `pr_stream`.
 
 ## License
 
