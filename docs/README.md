@@ -27,6 +27,7 @@ For people shipping new pipelines or extending the spec.
 
 | | |
 |---|---|
+| **[`../CONTRIBUTING.md`](../CONTRIBUTING.md)** | Top-level contribution guide — dev setup, PR conventions, commit style, CI expectations, release flow |
 | **[contributing/ADDING_A_PIPELINE.md](./contributing/ADDING_A_PIPELINE.md)** | Step-by-step cookbook for shipping a new synthesis pipeline (enum + Options + Pipeline class + tests + doc) |
 
 ---

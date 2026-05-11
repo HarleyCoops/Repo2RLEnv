@@ -121,7 +121,8 @@ Docs are organized into three tiers — see [`docs/README.md`](./docs/README.md)
   - [`reference/AUTH.md`](./docs/reference/AUTH.md) — GitHub / HF / LLM auth resolution
   - [`reference/BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md) — LLM-iterated per-repo Docker image
   - [`reference/AGENTS.md`](./docs/reference/AGENTS.md) — Harbor agent harnesses + RL trace plumbing
-- 🛠 [**`contributing/ADDING_A_PIPELINE.md`**](./docs/contributing/ADDING_A_PIPELINE.md) — step-by-step cookbook for shipping a new pipeline
+- 🛠 [**`CONTRIBUTING.md`**](./CONTRIBUTING.md) — dev setup, PR conventions, commit style, release flow
+- 🧪 [**`contributing/ADDING_A_PIPELINE.md`**](./docs/contributing/ADDING_A_PIPELINE.md) — step-by-step cookbook for shipping a new pipeline
 
 ---
 

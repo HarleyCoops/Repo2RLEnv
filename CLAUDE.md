@@ -63,7 +63,10 @@ docs/                           # public docs (committed), three tiers:
 plans/                          # internal working docs (gitignored)
 references/                     # cloned inspiration repos (gitignored)
 envs/, envs-*/, .r2e_cache/     # local artifacts (gitignored)
-tests/                          # pytest; 71/71 pass as of v0.2
+tests/                          # pytest; 115/115 pass as of v0.3
+.github/workflows/              # ci.yml (lint + matrix tests + build),
+                                # release.yml (PyPI publish on tagged release)
+CONTRIBUTING.md                 # dev setup, PR conventions, release flow
 ```
 
 ## Pipeline contract
@@ -127,12 +130,32 @@ For GHCR push: needs `gh auth refresh -h github.com -s write:packages` (one-time
 
 ## Conventions for changes
 
+The canonical contributor reference is [`CONTRIBUTING.md`](./CONTRIBUTING.md) at the repo root — read it before non-trivial changes. The high-leverage bits:
+
 - **`uv add <pkg>`** for dependencies. Never hand-edit `pyproject.toml`'s `dependencies` array.
 - **No `Co-Authored-By: Claude` trailer** on commits. User explicitly rejected it; see `~/.claude/projects/.../memory/feedback_no_coauthor.md`.
 - **Commits**: terse subject + short body explaining "why". Don't reference the current task; that goes in the PR description.
 - **PRs**: title under 70 chars; description has summary + test plan + out-of-scope items. Close issues via `Closes #N` in commit body.
-- **Tests**: every code change should keep the suite green. `uv run pytest -q` is the canonical command. 71/71 must pass.
+- **Tests**: every code change should keep the suite green. `uv run pytest -q` is the canonical command. **115/115 must pass.**
+- **Lint + format**: `uv run ruff check .` and `uv run ruff format .` before commit. CI rejects unformatted code or lint violations.
 - **Acknowledgments**: when a file draws inspiration from external work, add a header block crediting the source repo + paper + license + clarifying our license posture. See `bootstrap/__init__.py` or `reward.py` for the format.
+
+## CI / CD (GitHub Actions)
+
+Two workflows under `.github/workflows/`:
+
+- **`ci.yml`** — runs on every push to `main` + every PR. Three jobs: `lint` (ruff check + format check), `test` matrix over Python **3.12 / 3.13 / 3.14**, and `build` (uv build sdist + wheel + smoke install). All three must pass for a merge.
+- **`release.yml`** — fires on GitHub Release `published` events. Re-runs the full test matrix on the tag, builds, publishes to PyPI via `PYPI_API_TOKEN` repo secret, attaches sdist + wheel to the Release page. Manual re-runs via `workflow_dispatch -f tag=vX.Y.Z` if a publish step fails.
+
+Cutting a release (full flow):
+
+1. Bump `version` in `pyproject.toml`. `__version__` reads from `importlib.metadata` so no other code change needed.
+2. Commit + push to `main`. CI confirms tests green.
+3. `git tag vX.Y.Z && git push origin vX.Y.Z`
+4. `gh release create vX.Y.Z --generate-notes` (or web UI)
+5. `release.yml` auto-publishes to PyPI and attaches artifacts to the Release.
+
+`PYPI_API_TOKEN` lives in repo secrets ONLY. Don't paste it into chat, `.env`, or any committed file. The `pypi` GitHub environment is in place but currently has no protection rules — adding a deployment approval rule there is a one-click upgrade if we ever want a manual gate before publish.
 
 ## Cheatsheet — common tasks
 
@@ -140,21 +163,23 @@ For GHCR push: needs `gh auth refresh -h github.com -s write:packages` (one-time
 # Run a full bootstrap with the live UI (interactive terminal only)
 ./demo_bootstrap.sh
 
-# Generate a small dataset, push to HF Hub
+# Generate a sandbox-verified dataset (auto-triggers bootstrap if needed)
 uv run repo2rlenv generate \
-  --repo huggingface/trl --pipeline pr_diff \
-  --pipeline-opt limit=5 \
+  --repo <owner>/<repo> --pipeline pr_runtime \
+  --pipeline-opt limit=10 \
   --llm anthropic/claude-sonnet-4-6 \
-  --out hf://AdithyaSK/trl-r2e-v0-1
+  --out ./datasets/<dataset-name>
 
 # Score a candidate diff
 uv run repo2rlenv reward --task ./out/some-task --prediction ./candidate.diff
 
 # Validate a dataset
-uv run repo2rlenv validate ./datasets/django
+uv run repo2rlenv validate ./datasets/<dataset-name>
 
-# Run all tests
+# Run all tests + lint + format check (everything CI runs)
 uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
 
 # Add a dep
 uv add <pkg>            # runtime
@@ -180,9 +205,10 @@ uv add --dev <pkg>      # dev only
 
 ## Status (May 2026)
 
-- **v0.1.0 shipped** on PyPI: `pr_diff` (originally `pr_mining_lite`) + HF Hub publish + diff-similarity reward
-- **v0.2 merged into main**: bootstrap phase, Rich UI module, cost tracking, content-addressed cache keyed on bootstrap options
-- **v0.3 in flight**: `pr_runtime` (sandbox-verified PR mining) + auto-trigger of bootstrap from `generate`
+- **v0.1.0** shipped on PyPI: `pr_diff` (originally `pr_mining_lite`) + HF Hub publish + diff-similarity reward
+- **v0.2** merged into main: bootstrap phase, Rich UI module, cost tracking, content-addressed cache keyed on bootstrap options
+- **v0.3.0 shipped on PyPI**: `pr_runtime` (sandbox-verified PR mining) + auto-trigger bootstrap from `generate` + structural quality filters + targeted test invocation + CI/CD (ruff + matrix tests + release workflow)
+- **v0.4 planned**: polyglot log parsers (JS/Go/Rust), parallel per-PR validation, LLM-judged QA gate (SWE-Bench++ four-layer recipe)
 - 8 more pipelines planned in `docs/pipelines/` — see [`docs/pipelines/README.md`](./docs/pipelines/README.md) for the status table
 
 ### Naming convention (post-rename)
