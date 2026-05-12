@@ -74,6 +74,13 @@ def cmd_generate(args: argparse.Namespace) -> int:
             raise SystemExit(f"--llm expects provider/model, got {args.llm!r}")
         provider, model = args.llm.split("/", 1)
         overrides["llm"] = {"provider": provider, "model": model}
+        if getattr(args, "llm_fallback", None):
+            if "/" not in args.llm_fallback:
+                raise SystemExit(
+                    f"--llm-fallback expects provider/model, got {args.llm_fallback!r}"
+                )
+            fb_provider, fb_model = args.llm_fallback.split("/", 1)
+            overrides["llm"]["fallback"] = {"provider": fb_provider, "model": fb_model}
     if args.out:
         overrides["output"] = {
             "destination": args.out,
@@ -95,6 +102,28 @@ def cmd_generate(args: argparse.Namespace) -> int:
 
     options = parse_options(gen_input.pipeline.name.value, gen_input.pipeline.options)
 
+    # Pre-flight: does this pipeline support this repo's primary language?
+    # Cheap GitHub API call; runs BEFORE bootstrap so we fail fast on a
+    # Go/Rust/Node repo + Python-only pipeline mismatch (~2s vs ~5 min).
+    if getattr(pipeline_cls, "supported_languages", None) is not None:
+        from repo2rlenv.auth import resolve_github_token
+        from repo2rlenv.bootstrap.language import language_from_github_name
+        from repo2rlenv.github import get_primary_language
+        from repo2rlenv.pipelines.base import (
+            LanguageMismatchError,
+            check_language_compatibility,
+        )
+
+        owner, name = gen_input.repo.owner_name
+        gh_token = resolve_github_token(gen_input.repo, gen_input.auth)
+        gh_lang_name = get_primary_language(owner, name, token=gh_token)
+        detected = language_from_github_name(gh_lang_name)
+        try:
+            check_language_compatibility(pipeline_cls, detected, force=args.force_language)
+        except LanguageMismatchError as exc:
+            console.error(str(exc))
+            return 2
+
     # Auto-trigger bootstrap for sandbox-required pipelines (requires_bootstrap=True).
     # Cache hit ⇒ instant; cache miss ⇒ full LLM-agent run with the live UI.
     bootstrap_result = None
@@ -103,7 +132,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         from repo2rlenv.bootstrap.runner import BootstrapError
         from repo2rlenv.ui.views.bootstrap import bootstrap_view_or_plain
 
-        # Mutate spec with CLI overrides (language / base-image / budget / force)
+        # Mutate spec with CLI overrides (language / base-image / budget / force / --bootstrap-opt)
         bspec = gen_input.bootstrap.model_copy(deep=True)
         if args.language:
             try:
@@ -115,6 +144,16 @@ def cmd_generate(args: argparse.Namespace) -> int:
         # --max-spend-usd=0 ⇒ no cap; map to None
         if args.max_spend_usd is not None:
             bspec.max_llm_spend_usd = args.max_spend_usd if args.max_spend_usd > 0 else None
+        # Generic --bootstrap-opt key=value for any other BootstrapSpec field
+        # (cache_dir / max_iterations / max_seconds / image_registry / platform / ...)
+        for k, v in _parse_pipeline_opts(getattr(args, "bootstrap_opt", None)).items():
+            if not hasattr(bspec, k):
+                raise SystemExit(f"--bootstrap-opt: unknown BootstrapSpec field {k!r}")
+            # Pydantic will coerce types as needed (str→Path, str→int, etc.)
+            try:
+                bspec = bspec.model_copy(update={k: v})
+            except Exception as exc:
+                raise SystemExit(f"--bootstrap-opt {k}={v!r}: {exc}") from exc
         with bootstrap_view_or_plain(
             repo=gen_input.repo.url,
             ref=gen_input.repo.ref,
@@ -475,6 +514,13 @@ def main(argv: list[str] | None = None) -> int:
         help="pipeline-specific kwarg, repeatable (key=value)",
     )
     g.add_argument("--llm", help="LLM as provider/model (e.g. anthropic/claude-sonnet-4-6)")
+    g.add_argument(
+        "--llm-fallback",
+        help=(
+            "fallback LLM as provider/model — used automatically when the primary "
+            "returns 5xx / rate-limit / network errors"
+        ),
+    )
     g.add_argument("--out", help="output directory")
     g.add_argument("--org", help="task.org for Harbor")
     g.add_argument("--dataset-name", help="dataset name")
@@ -496,6 +542,23 @@ def main(argv: list[str] | None = None) -> int:
         "--force-bootstrap",
         action="store_true",
         help="ignore bootstrap cache, rebuild from scratch",
+    )
+    g.add_argument(
+        "--bootstrap-opt",
+        action="append",
+        metavar="KEY=VALUE",
+        help=(
+            "override any BootstrapSpec field (e.g. cache_dir=./envs-matrix/sonnet-4-6, "
+            "max_iterations=30, max_seconds=2400). Repeatable."
+        ),
+    )
+    g.add_argument(
+        "--force-language",
+        action="store_true",
+        help=(
+            "skip the pipeline-language compatibility check "
+            "(e.g. run a Python-only pipeline against a Go repo anyway)"
+        ),
     )
     g.set_defaults(func=cmd_generate)
 
