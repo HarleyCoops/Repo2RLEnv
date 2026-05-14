@@ -6,7 +6,7 @@ This file is auto-loaded by Claude Code in this repo. Keep it tight; longer pros
 
 **Repo2RLEnv** (`repo2rlenv` on PyPI) turns any GitHub repository into a verifiable RL training/eval dataset. End-to-end: **synthesis → standardize → train + eval**, focus on training. We emit datasets in the [Harbor](https://github.com/harbor-framework/harbor) task format so they drop straight into Harbor's runtime ecosystem (Local Docker / Modal / Daytona / E2B / Runloop + 22 agent harnesses).
 
-GitHub: https://github.com/adithya-s-k/Repo2RLEnv · PyPI: `repo2rlenv` · License: Apache-2.0.
+GitHub: https://github.com/huggingface/Repo2RLEnv · PyPI: `repo2rlenv` · License: Apache-2.0.
 
 ## Architecture
 
@@ -177,15 +177,11 @@ uv run repo2rlenv generate \
 # Validate a dataset (fast structural check, no LLM, no Docker)
 uv run repo2rlenv validate ./datasets/<dataset-name>
 
-# Publish to HF Hub
-uv run repo2rlenv push ./datasets/<dataset-name> hf://<your-org>/<dataset-name>
+# Publish to HF Hub (bare name auto-resolves owner via whoami)
+uv run repo2rlenv push ./datasets/<dataset-name> <your-org>/<dataset-name>
 
-# Pull a published dataset back later
-uv run repo2rlenv pull hf://<your-org>/<dataset-name>
-
-# Diff-similarity reward for training loops — Python import only, no CLI:
-#   from repo2rlenv.reward import calculate_diff_similarity_reward
-# Test-execution reward comes from `harbor run`.
+# Pull a published dataset back
+uv run repo2rlenv pull <your-org>/<dataset-name>
 
 # Run all tests + lint + format check (everything CI runs)
 uv run pytest -q

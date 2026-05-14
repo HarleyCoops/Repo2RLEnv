@@ -125,7 +125,7 @@ repo2rlenv generate \
   --llm anthropic/claude-sonnet-4-6 \
   --out ./datasets/trl-r2e-v0-1
 
-repo2rlenv push ./datasets/trl-r2e-v0-1 hf://AdithyaSK/trl-r2e-v0-1
+repo2rlenv push ./datasets/trl-r2e-v0-1 <your-org>/trl-r2e-v0-1
 ```
 
 ### Python
@@ -174,4 +174,4 @@ That's the full consumer-side loop for a lite task — no Docker, no sandbox nee
 
 ## Verified live
 
-This pipeline shipped the dataset at [`AdithyaSK/trl-r2e-v0-1`](https://huggingface.co/datasets/AdithyaSK/trl-r2e-v0-1) — 5 tasks from `huggingface/trl`, both publicly served via Harbor's `registry.json` format and self-tested in E2B with reward = 1.0 (oracle vs oracle).
+This pipeline is verified end-to-end: emitted datasets are publicly servable via Harbor's `registry.json` format and oracle-vs-oracle scoring lands at reward = 1.0.

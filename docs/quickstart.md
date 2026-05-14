@@ -50,8 +50,6 @@ Output lands in `./datasets/<dataset-name>/<owner>__<repo>-<pr_number>/`.
 
 ## Push to HF Hub
 
-Replace the `--out` flag with an `hf://` destination and the dataset is pushed after generation:
-
 ```bash
 # 1. Generate to a local directory
 repo2rlenv generate \
@@ -61,14 +59,14 @@ repo2rlenv generate \
   --llm anthropic/claude-sonnet-4-6 \
   --out ./datasets/<dataset-name>
 
-# 2. Push to HF Hub
-repo2rlenv push ./datasets/<dataset-name> hf://<your-org>/<dataset-name>
+# 2. Push to HF Hub (bare name auto-resolves owner via `whoami`)
+repo2rlenv push ./datasets/<dataset-name> <your-org>/<dataset-name>
 
 # 3. Pull it back anywhere later
-repo2rlenv pull hf://<your-org>/<dataset-name>
+repo2rlenv pull <your-org>/<dataset-name>
 ```
 
-The push emits a `registry.json` so `harbor download --registry-url hf://<your-org>/<dataset-name>` works out of the box.
+The push emits a `registry.json` so `harbor download --registry-url <hf-resolve-url>` works out of the box.
 
 ## Validate the dataset
 

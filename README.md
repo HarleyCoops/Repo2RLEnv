@@ -39,19 +39,14 @@ repo2rlenv generate \
 repo2rlenv validate ./datasets/<dataset-name>
 
 # Publish to HF Hub
-repo2rlenv push ./datasets/<dataset-name> hf://<your-org>/<dataset-name>
+repo2rlenv push ./datasets/<dataset-name> <your-org>/<dataset-name>
 
 # Pull a published dataset back later
-repo2rlenv pull hf://<your-org>/<dataset-name> ./datasets/<dataset-name>
+repo2rlenv pull <your-org>/<dataset-name> ./datasets/<dataset-name>
 
 # Run an agent against the spec — Harbor (separate tool) handles execution
 harbor run --agent oracle --path ./datasets/<dataset-name>/<task-id>
 ```
-
-> **Diff-similarity reward for training loops:** import the function directly —
-> `from repo2rlenv.reward import calculate_diff_similarity_reward`. There is no
-> CLI wrapper; Harbor handles test-execution rewards, this function handles the
-> cheap dense signal that RL training uses.
 
 Full walkthrough in [**`docs/quickstart.md`**](./docs/quickstart.md).
 
@@ -104,7 +99,7 @@ A dataset format that:
 - **Trains anywhere via Harbor** — TRL, SkyRL, Prime-RL, Tinker, Miles, Slime, harbor.rl
 - **Evaluates with any agent harness** — Claude Code, OpenHands, Codex CLI, Gemini CLI, …
 - Is **language-agnostic** by spec — `_runtime` pipelines emit Dockerfile + shell verifier; `_diff` pipelines are pure text and work for any language with no extra config
-- **Publishes natively** to Hugging Face Hub — `repo2rlenv push ./datasets/<name> hf://owner/name` writes a Harbor-compatible `registry.json` so consumers can `harbor download` (or `repo2rlenv pull`) without any glue
+- **Publishes natively** to Hugging Face Hub — `repo2rlenv push ./datasets/<name> owner/name` writes a Harbor-compatible `registry.json` so consumers can `harbor download` (or `repo2rlenv pull`) without any glue
 - Supports **private repos** end-to-end — `gh auth token` resolved automatically; build secrets declared by name; verifier-time secrets forbidden by spec
 
 ---

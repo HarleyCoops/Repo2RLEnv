@@ -25,7 +25,7 @@ class GenerationInput(BaseModel):
 | `RepoSpec` | `url` | `access ∈ {public, private, auto}`, optional `auth_token_env`, `ref` defaults to `HEAD` |
 | `PipelineSpec` | `name`, `options` | `name` is an enum (see [pipelines/](./pipelines/)); `options` is validated against the named pipeline's Options model with `extra="forbid"` |
 | `LLMSpec` | `provider`, `model` | `provider/model` resolves to a LiteLLM identifier; supports `endpoint` for self-hosted vLLM/Ollama |
-| `OutputSpec` | `destination`, `org`, `dataset_name` | `destination` may be a local path or `hf://owner/name` |
+| `OutputSpec` | `destination`, `org`, `dataset_name` | `destination` is a local path; publish separately via `repo2rlenv push` |
 | `QASpec` | (none) | Defaults to `[diff_parse]` for the lite path; full pipelines opt into `[determinism, oracle_consistency, llm_judge, false_negative]` |
 | `SandboxSpec` | (none) | See "Sandbox model" below — `none` for lite, `harbor` for full pipelines (delegates), `local`/`e2b` for lite consumer-side runners |
 | `AuthSpec` | (none) | Names of env vars only — values never stored |
@@ -43,7 +43,7 @@ repo2rlenv generate \
   --llm anthropic/claude-sonnet-4-6 \
   --out ./datasets/trl-r2e-v0-1
 
-repo2rlenv push ./datasets/trl-r2e-v0-1 hf://AdithyaSK/trl-r2e-v0-1
+repo2rlenv push ./datasets/trl-r2e-v0-1 <your-org>/trl-r2e-v0-1
 ```
 
 **Config-file form** — `--config <path>` accepts YAML or TOML, format auto-detected by extension. CLI flags override file fields:
@@ -63,7 +63,7 @@ llm:
   model: "claude-sonnet-4-6"
 output:
   destination: "./datasets/trl-r2e-v0-1"
-  org: "AdithyaSK"
+  org: "<your-org>"
   dataset_name: "trl-r2e-v0-1"
   visibility: "public"
 ```
@@ -94,7 +94,7 @@ version = "1.0"
 
 [task]
 name = "huggingface__trl-5705"
-org = "AdithyaSK"
+org = "<your-org>"
 description = "..."
 
 [metadata]
@@ -130,7 +130,7 @@ Each pipeline writes its own subtable under `[metadata.repo2env.<name>]` carryin
 
 ### Dataset-level layout (HF Hub)
 
-When pushed via `repo2rlenv push` or `--out hf://...`, the dataset on the Hub looks like:
+When pushed via `repo2rlenv push`, the dataset on the Hub looks like:
 
 ```
 huggingface.co/datasets/<owner>/<name>/

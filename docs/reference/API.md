@@ -136,7 +136,7 @@ from repo2rlenv.hub import push_to_hub
 
 result = push_to_hub(
     local_dataset_dir=Path("./out"),
-    repo_id="AdithyaSK/trl-r2e-v0-1",
+    repo_id="<your-org>/trl-r2e-v0-1",
     auth=auth_spec,
     private=False,
     pipeline="pr_diff",
@@ -160,8 +160,8 @@ Repo2RLEnv ships **no execution runtime**. To run/score:
 |---|---|
 | `repo2rlenv generate ...` | `pipelines.PIPELINES[name](input, opts).run(out_dir)` |
 | `repo2rlenv validate <path>` | walk task.toml files + `tomllib.loads` |
-| `repo2rlenv push <dir> <hf://...>` | `hub.push_to_hub(local_dir, repo_id, auth, ...)` |
-| `repo2rlenv pull <hf://...> [<dir>]` | `hub.pull_from_hub(repo_id, local_dir, auth, ...)` |
+| `repo2rlenv push <dir> <owner>/<name>` | `hub.push_to_hub(local_dir, repo_id, auth, ...)` |
+| `repo2rlenv pull <owner>/<name> [<dir>]` | `hub.pull_from_hub(repo_id, local_dir, auth, ...)` |
 | `repo2rlenv bootstrap ...` | `bootstrap.ensure_bootstrap(repo, spec, llm)` |
 | diff-similarity reward | `reward.calculate_diff_similarity_reward(oracle, prediction)` (Python only) |
 | test-execution reward | `harbor run --agent <agent> --path <task>` (separate tool) |

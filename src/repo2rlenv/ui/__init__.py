@@ -6,7 +6,7 @@ from anywhere; build a `live_view()` when you need a redrawing display.
 ```python
 from repo2rlenv.ui import console
 
-console.success("Pushed dataset to AdithyaSK/trl-r2e-v0-1")
+console.success("Pushed dataset to <your-org>/trl-r2e-v0-1")
 console.info("Starting bootstrap...")
 console.warn("Smoke test exited 5 (no tests collected — env is fine)")
 console.error("Bootstrap failed: no internet access")
