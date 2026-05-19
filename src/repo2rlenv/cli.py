@@ -126,6 +126,12 @@ def cmd_generate(args: argparse.Namespace) -> int:
     # Auto-trigger bootstrap for sandbox-required pipelines (requires_bootstrap=True).
     # Cache hit ⇒ instant; cache miss ⇒ full LLM-agent run with the live UI.
     bootstrap_result = None
+    if getattr(pipeline_cls, "requires_bootstrap", False) and gen_input.llm is None:
+        console.error(
+            f"pipeline {gen_input.pipeline.name.value!r} requires --llm "
+            f"(bootstrap needs an LLM to build the sandbox image)"
+        )
+        return 2
     if getattr(pipeline_cls, "requires_bootstrap", False):
         from repo2rlenv.bootstrap import LanguageHint, ensure_bootstrap
         from repo2rlenv.bootstrap.runner import BootstrapError
@@ -156,7 +162,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         with bootstrap_view_or_plain(
             repo=gen_input.repo.url,
             ref=gen_input.repo.ref,
-            model=gen_input.llm.qualified_name,
+            model=gen_input.llm.qualified_name if gen_input.llm else "none",
             max_iterations=bspec.max_iterations,
             language=(bspec.languages_hint[0] if bspec.languages_hint else "unknown"),
             base_image=bspec.base_image or "(auto-detect)",
@@ -210,7 +216,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     with generation_view_or_plain(
         repo=gen_input.repo.url,
         pipeline=gen_input.pipeline.name.value,
-        model=gen_input.llm.qualified_name,
+        model=gen_input.llm.qualified_name if gen_input.llm else "none",
         limit=limit_hint,
         out=str(out_dir),
         force_plain=args.no_ui,
