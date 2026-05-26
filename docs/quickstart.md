@@ -98,14 +98,45 @@ Repo2RLEnv emits Harbor-shaped tasks; running them is Harbor's job:
 ```bash
 uv tool install harbor
 
-harbor run --path ./datasets/<dataset-name> --env docker --agent oracle
-# Or remote: --env modal / --env daytona / --env e2b / --env runloop
+# Run with the oracle adapter — applies the gold patch, must score reward=1.0
+harbor run -p ./datasets/<dataset-name> -a oracle --env docker
+
+# Or with a real coding agent. We show `claude-code` here because that's
+# what we used to verify our reference datasets, but Harbor ships 25+
+# agent harnesses — swap `-a claude-code -m anthropic/claude-sonnet-4-6`
+# for any of:
+#   openhands / openhands-sdk · codex · aider · gemini-cli · copilot-cli
+#   opencode · cursor-cli · qwen-coder · kimi-cli · goose · mini-swe-agent
+#   swe-agent · nemo-agent · terminus-2 · trae-agent · devin · ... etc.
+# Each agent expects its own provider env var (OPENAI_API_KEY,
+# GOOGLE_API_KEY, GITHUB_TOKEN for copilot, …) — see `harbor run --help`
+# for the full list. The verifier's LLM-judge component (when enabled)
+# also needs ANTHROPIC_API_KEY — pass via --ve so it reaches the verifier
+# container.
+harbor run \
+  -p ./datasets/<dataset-name> \
+  -a claude-code -m anthropic/claude-sonnet-4-6 \
+  --ak max_budget_usd=2.00 \
+  --ae ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --ve ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --env docker
+
+# Same env, different agent — openhands with GPT-4o:
+harbor run \
+  -p ./datasets/<dataset-name> \
+  -a openhands -m openai/gpt-4o \
+  --ae OPENAI_API_KEY=$OPENAI_API_KEY \
+  --ve ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
+  --env docker
+
+# Remote sandboxes: --env modal / --env daytona / --env e2b / --env runloop
 ```
 
-> **Note:** `harbor run` requires a sandbox-verified pipeline (`pr_runtime`, `commit_runtime`, …).
-> The `pr_diff` pipeline used above is text-only and does not emit an `environment/` directory,
-> so Harbor cannot execute it. Switch to `--pipeline pr_runtime` (requires Docker + `--llm`) to
-> produce runnable tasks.
+`pr_diff` ships a thin `python:3.12-slim` environment with a multi-component
+diff-similarity verifier baked in. For sandbox-verified pipelines like
+`pr_runtime` / `commit_runtime` that need to actually execute the repo's test
+suite, the runtime bootstraps a per-repo Docker image on demand — see
+[`reference/BOOTSTRAP.md`](./reference/BOOTSTRAP.md).
 
 ## Next steps
 
