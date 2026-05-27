@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Repo2RLEnv — banner</title>
+<style>
+  :root {
+    --bg: #07090f;
+    --raised: #0e1422;
+    --border: #283149;
+    --text: #f6f8fc;
+    --muted: #aab6c8;
+    --dim: #6c768c;
+    --lav: #b06bff;
+    --em: #10f0a4;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #000; }
+
+  .banner {
+    position: relative; width: 1280px; height: 440px;
+    background: var(--bg); overflow: hidden; font-family: var(--mono); color: var(--text);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 38px 38px; opacity: 0.12;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 55%, #000 30%, transparent 78%);
+            mask-image: radial-gradient(ellipse at 50% 55%, #000 30%, transparent 78%);
+  }
+  .glow-em  { position:absolute; width:640px; height:640px; right:-160px; top:-200px;
+              background: radial-gradient(circle, rgba(16,240,164,0.14), transparent 60%); }
+  .glow-lav { position:absolute; width:560px; height:560px; left:-220px; bottom:-240px;
+              background: radial-gradient(circle, rgba(176,107,255,0.13), transparent 60%); }
+
+  /* Hugging Face mark, top-right */
+  .hf { position:absolute; top:30px; right:56px; display:flex; align-items:center; gap:11px; z-index:3; }
+  .hf .txt { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size:18px; font-weight:700; color: var(--muted); }
+
+  .flow { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:34px; padding: 0 70px; }
+  .stage { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .cap { font-size:22px; font-weight:700; color: var(--muted); letter-spacing:0.5px; }
+  .cap b { color: var(--text); }
+
+  /* repo card */
+  .repo { width: 244px; height: 174px; background: var(--raised); border:1.5px solid rgba(176,107,255,0.55);
+          border-radius:14px; overflow:hidden; box-shadow:0 0 36px rgba(176,107,255,0.18), 0 18px 44px rgba(0,0,0,0.5); }
+  .repo .hd { display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid rgba(176,107,255,0.25);
+              background: rgba(176,107,255,0.08); font-size:12px; color:var(--text); }
+  .repo .body { padding:16px; display:flex; gap:14px; }
+
+  /* center engine */
+  .engine { display:flex; flex-direction:column; align-items:center; gap:9px; }
+  .ebox { background: var(--raised); border:1.5px solid rgba(16,240,164,0.55); border-radius:14px;
+          padding:18px 26px; box-shadow: 0 0 34px rgba(16,240,164,0.16); text-align:center; }
+  .ebox .w { font-size:34px; font-weight:800; letter-spacing:-1.4px; line-height:1; }
+  .ebox .w .em { color: var(--em); text-shadow:0 0 18px rgba(16,240,164,0.5); }
+  .ebox .sub { margin-top:8px; font-size:12px; color: var(--muted); letter-spacing:0.4px; }
+  .ebox .sub b { color: var(--lav); }
+
+  .arrow svg { display:block; }
+
+  /* env grid */
+  .envs { display:grid; grid-template-columns:repeat(6, 1fr); gap:9px; width:392px; }
+  .etile { height:44px; background:var(--raised); border:1px solid rgba(16,240,164,0.45);
+           border-radius:6px; position:relative; overflow:hidden; }
+  .etile::before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--em); opacity:0.75; }
+  .etile::after { content:""; position:absolute; right:6px; bottom:6px; width:5px; height:5px; border-radius:1.5px; background:var(--em); }
+  .etile i { position:absolute; left:7px; top:14px; width:20px; height:2px; border-radius:1px; background:#6c768c; box-shadow:0 7px 0 #6c768c; }
+</style>
+</head>
+<body>
+  <div class="banner">
+    <div class="grid"></div>
+    <div class="glow-em"></div>
+    <div class="glow-lav"></div>
+
+    <div class="flow">
+      <!-- repo -->
+      <div class="stage">
+        <div class="repo">
+          <div class="hd">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="#f6f8fc"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 014 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+            username / repo
+          </div>
+          <div class="body">
+            <svg width="40" height="110" viewBox="0 0 40 110" fill="none">
+              <path d="M12 8 L12 100" stroke="#b06bff" stroke-width="2.5"/>
+              <path d="M12 30 C 28 30, 30 34, 30 48 L30 64 C30 78, 28 80, 12 80" stroke="#10f0a4" stroke-width="2.5" fill="none"/>
+              <circle cx="12" cy="8" r="4" fill="#0e1422" stroke="#b06bff" stroke-width="2.5"/>
+              <circle cx="12" cy="38" r="4" fill="#0e1422" stroke="#b06bff" stroke-width="2.5"/>
+              <circle cx="30" cy="56" r="4" fill="#0e1422" stroke="#10f0a4" stroke-width="2.5"/>
+              <circle cx="12" cy="72" r="4" fill="#0e1422" stroke="#b06bff" stroke-width="2.5"/>
+              <circle cx="12" cy="100" r="4" fill="#0e1422" stroke="#b06bff" stroke-width="2.5"/>
+            </svg>
+            <div style="flex:1; display:flex; flex-direction:column; gap:9px; padding-top:6px;">
+              <div style="height:6px;width:90%;border-radius:3px;background:rgba(16,240,164,0.5)"></div>
+              <div style="height:6px;width:70%;border-radius:3px;background:#283149"></div>
+              <div style="height:6px;width:82%;border-radius:3px;background:rgba(16,240,164,0.5)"></div>
+              <div style="height:6px;width:58%;border-radius:3px;background:#283149"></div>
+              <div style="height:6px;width:74%;border-radius:3px;background:#283149"></div>
+            </div>
+          </div>
+        </div>
+        <div class="cap"><b>any repo</b></div>
+      </div>
+
+      <!-- arrow -->
+      <div class="arrow">
+        <svg width="74" height="22" viewBox="0 0 74 22" fill="none">
+          <path d="M4 11 L60 11" stroke="#f6f8fc" stroke-width="3" marker-end="url(#a1)"/>
+          <defs><marker id="a1" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#f6f8fc"/></marker></defs>
+        </svg>
+      </div>
+
+      <!-- center engine -->
+      <div class="engine">
+        <div class="ebox">
+          <div class="w">repo2<span class="em">rlenv</span></div>
+        </div>
+      </div>
+
+      <!-- arrow -->
+      <div class="arrow">
+        <svg width="74" height="22" viewBox="0 0 74 22" fill="none">
+          <path d="M4 11 L60 11" stroke="#10f0a4" stroke-width="3" marker-end="url(#a2)"/>
+          <defs><marker id="a2" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#10f0a4"/></marker></defs>
+        </svg>
+      </div>
+
+      <!-- env grid -->
+      <div class="stage">
+        <div class="envs" id="envs"></div>
+        <div class="cap">verifiable <b>RL environments</b></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const g = document.getElementById('envs');
+    for (let i = 0; i < 18; i++) { const d = document.createElement('div'); d.className = 'etile'; d.innerHTML = '<i></i>'; g.appendChild(d); }
+  </script>
+</body>
+</html>

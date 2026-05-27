@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <h1 align="center">Repo2RLEnv</h1>
   <p align="center"><b>Turn any GitHub repository into a verifiable RL environment for training and evaluation.</b></p>
@@ -18,15 +20,12 @@
   <a href="#documentation">Docs</a>
 </p>
 
+<p align="center">
+  <img src="assets/banner.png" alt="Repo2RLEnv — turn any repo into verifiable RL environments" width="100%">
+</p>
+
 Repo2RLEnv synthesizes **verifiable** training and evaluation data from existing repositories, exports it into a uniform spec, and pushes it straight to the Hugging Face Hub. The output spec is [Harbor](https://github.com/harbor-framework/harbor)'s, so every dataset you produce drops directly into any Harbor-compatible runtime — no glue code.
 
-```
-  ╭──────────────╮     ╭──────────────╮     ╭──────────────╮     ╭──────────────────╮
-  │     any      │ ──▶ │  synthesize  │ ──▶ │ uniform spec │ ──▶ │ train · eval ·   │
-  │     repo     │     │  (pipelines) │     │   (Harbor)   │     │  push to HF Hub  │
-  ╰──────────────╯     ╰──────────────╯     ╰──────────────╯     ╰──────────────────╯
-                       └──────────────────────── Repo2RLEnv ────────────────────────┘
-```
 
 ## Quickstart
 
