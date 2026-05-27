@@ -60,32 +60,48 @@ Full walkthrough in [**`docs/quickstart.md`**](./docs/quickstart.md).
 
 ## Pipelines
 
-A pipeline takes a repo + config and emits Harbor-shaped tasks; pipelines differ in **what** verifiable signal they manufacture. Two are stable and recommended for production use; the rest are **experimental** — usable today (the CLI prints a warning before they run), but their interface and output quality are still evolving.
+A pipeline turns a repo into Harbor tasks. **Two are stable** and recommended for production; **seven are experimental** — usable today (the CLI prints a warning before they run), with interfaces and output quality still evolving.
 
 ### Stable
 
-| Pipeline | What it does | Languages | Inspired by |
-|---|---|---|---|
-| [**`pr_diff`**](./docs/pipelines/pr_diff.md) | Mine merged PR diffs into text-only tasks. A 6-component verifier (format / size / file-targeting / region-overlap / changes-only similarity / LLM-as-judge) scores the agent's edit against the oracle. Ships a thin `python:3.12-slim` env — no per-repo bootstrap. | any | [SWE-RL](https://github.com/facebookresearch/swe-rl) |
-| [**`pr_runtime`**](./docs/pipelines/pr_runtime.md) | SWE-bench-style: mine merged PRs and verify each **inside a Docker sandbox** — the `FAIL_TO_PASS` / `PASS_TO_PASS` test split must flip FAIL→PASS under the oracle patch. Graded reward + tracked/strict resolution. The strongest signal. | Py · Go · Node · Rust | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
+**[`pr_diff`](./docs/pipelines/pr_diff.md)** mines merged pull-request diffs into lightweight, text-only tasks. The agent proposes an edit, and a verifier scores it against the real merged diff — on format, the files it touched, how much it changed, and (via an LLM judge) whether it's semantically right. No per-repo setup: every task ships a thin `python:3.12-slim` image.
+→ Reference dataset: [`AdithyaSK/repo2rlenv-pr-diff`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-diff) (100 oracle-verified tasks).
 
-**Published reference datasets:** [`AdithyaSK/repo2rlenv-pr-diff`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-diff) · [`AdithyaSK/repo2rlenv-pr-runtime`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-runtime) (100 oracle-verified envs each).
+**[`pr_runtime`](./docs/pipelines/pr_runtime.md)** is the SWE-bench-style flagship. It mines merged PRs and actually runs the repo's test suite inside a Docker sandbox: the tests the PR fixed must go from failing to passing under the gold patch, while the rest keep passing. That makes it the strongest, least-gameable signal of the set.
+→ Reference dataset: [`AdithyaSK/repo2rlenv-pr-runtime`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-runtime) (100 oracle-verified tasks).
 
 ### Experimental
 
-> These run normally but emit a warning first. Interfaces and output quality are still being tuned — pin a release if you depend on them.
+> These run normally but emit a warning first — pin a release if you depend on them. Each links to its own page; the gist:
 
-| Pipeline | What it does | Languages | Inspired by |
-|---|---|---|---|
-| [`pr_stream`](./docs/pipelines/pr_stream.md) | Continuous variant of `pr_runtime` — watermark-based incremental mining for monthly cron jobs (contamination-resistant eval sets). Same oracle; adds an `after_iso` filter + state file. | Py · Go · Node · Rust | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) |
-| [`commit_runtime`](./docs/pipelines/commit_runtime.md) | Mine **commit history** directly, bypassing PR-review filters — catches small "drive-by" fixes. Same verifier as `pr_runtime`. | Py · Go · Node · Rust | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) |
-| [`cve_patches`](./docs/pipelines/cve_patches.md) | OSV-driven security tasks: map CVE → fix commit → Harbor task. Reuses `pr_runtime`'s verifier — the fix flips F2P. | Py · Go · Node · Rust | [PatchSeeker](https://github.com/hungkien05/PatchSeeker) |
-| [`mutation_bugs`](./docs/pipelines/mutation_bugs.md) | **Synthesize** tasks: inject AST-level bug mutations into real source until a test breaks; the agent must restore green. LLM ranks bugs for plausibility. | Py | [SWE-smith](https://github.com/SWE-bench/SWE-smith) |
-| [`code_instruct`](./docs/pipelines/code_instruct.md) | Repo-anchored OSS-Instruct: LLM reads a real source file, writes a plausible problem + executable verifier, and the verifier runs against the agent's solution. | Py | [Magicoder](https://github.com/ise-uiuc/magicoder) |
-| [`equivalence_tests`](./docs/pipelines/equivalence_tests.md) | Extract a real function as the reference; LLM authors equivalence tests comparing the agent's reimplementation against the original on a generated input distribution. | Py | [R2E](https://github.com/r2e-project/r2e) |
-| [`refactor_synthesis`](./docs/pipelines/refactor_synthesis.md) | Mine rename-refactor commits via commit-message regex + a multi-criteria (structural + behavioral) diff verifier. Python-native — no JVM dependency. | Py | drops [RefactoringMiner](https://github.com/tsantalis/RefactoringMiner) |
+- **[`pr_stream`](./docs/pipelines/pr_stream.md)** — `pr_runtime` on a schedule: incremental, watermark-based mining for contamination-resistant eval sets.
+- **[`commit_runtime`](./docs/pipelines/commit_runtime.md)** — mines commit history directly, catching fixes that never went through a PR.
+- **[`cve_patches`](./docs/pipelines/cve_patches.md)** — security tasks from public CVEs, mapped to their fix commits.
+- **[`mutation_bugs`](./docs/pipelines/mutation_bugs.md)** — injects synthetic bugs into real code; the agent must restore the tests to green.
+- **[`code_instruct`](./docs/pipelines/code_instruct.md)** — generates a problem + executable verifier from a real source file.
+- **[`equivalence_tests`](./docs/pipelines/equivalence_tests.md)** — the agent reimplements a real function; generated tests check it matches the original.
+- **[`refactor_synthesis`](./docs/pipelines/refactor_synthesis.md)** — mines refactor commits and verifies behavior is preserved.
 
-Every pipeline except `pr_diff` runs its target repo inside a Docker sandbox built once by the [bootstrap phase](#bootstrap) and cached. See [`docs/pipelines/README.md`](./docs/pipelines/README.md) for reward kinds, per-pipeline options, and dataset cards.
+### At a glance
+
+| Pipeline | Stability | Sandbox | LLM use | Languages |
+|---|:-:|:-:|:-:|---|
+| `pr_diff` | stable | thin | verify | any |
+| `pr_runtime` | stable | ✅ | bootstrap | Py · Go · Node · Rust |
+| `pr_stream` | experimental | ✅ | bootstrap | Py · Go · Node · Rust |
+| `commit_runtime` | experimental | ✅ | bootstrap | Py · Go · Node · Rust |
+| `cve_patches` | experimental | ✅ | bootstrap | Py · Go · Node · Rust |
+| `mutation_bugs` | experimental | ✅ | synthesis | Py |
+| `code_instruct` | experimental | ✅ | synthesis | Py |
+| `equivalence_tests` | experimental | ✅ | synthesis | Py |
+| `refactor_synthesis` | experimental | ✅ | bootstrap | Py |
+
+**What the columns mean**
+- **Sandbox** — whether the task runs inside Docker. `✅` = a per-repo image is built once by the [bootstrap phase](#bootstrap) and cached; `thin` = no bootstrap, just a generic `python:3.12-slim` image.
+- **LLM use** — when a language model is invoked: **bootstrap** (one-time env build, then cached), **synthesis** (the model writes the task itself), or **verify** (the model judges the agent's solution).
+- **Languages** — source languages the pipeline supports.
+
+→ **Full reference** — per-pipeline options, reward design, and dataset cards: [**`docs/pipelines/`**](./docs/pipelines/README.md).
 
 ## Bootstrap
 
