@@ -137,6 +137,7 @@ class CodeInstructPipeline:
 
     name: ClassVar[PipelineName] = PipelineName.CODE_INSTRUCT
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = True
     supported_languages: ClassVar[frozenset[LanguageHint] | None] = frozenset({LanguageHint.PYTHON})
 
     def __init__(

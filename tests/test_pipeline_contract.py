@@ -42,6 +42,21 @@ def test_pipelines_declare_requires_bootstrap():
         assert isinstance(cls.requires_bootstrap, bool)
 
 
+def test_pipeline_stability_classification():
+    """Only pr_diff + pr_runtime are stable; every other pipeline is experimental.
+
+    cmd_generate warns before running any pipeline whose `experimental` is True.
+    """
+    stable = {"pr_diff", "pr_runtime"}
+    for name, cls in PIPELINES.items():
+        flag = getattr(cls, "experimental", False)
+        assert isinstance(flag, bool)
+        expected_experimental = name not in stable
+        assert flag is expected_experimental, (
+            f"{name}: experimental should be {expected_experimental}"
+        )
+
+
 def test_python_only_pipelines_declare_supported_languages():
     """The 4 Python-only pipelines must restrict supported_languages to {PYTHON}.
 

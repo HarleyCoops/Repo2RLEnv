@@ -424,6 +424,7 @@ class PRDiffPipeline:
 
     name: ClassVar[PipelineName] = PipelineName.PR_DIFF
     requires_bootstrap: ClassVar[bool] = False
+    experimental: ClassVar[bool] = False  # stable
 
     def __init__(self, input: GenerationInput, options: PRDiffOptions, bootstrap=None):
         # bootstrap is unused for pr_diff — accepted for Protocol uniformity

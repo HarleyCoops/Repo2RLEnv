@@ -108,6 +108,7 @@ class CommitRuntimePipeline:
 
     name: ClassVar[PipelineName] = PipelineName.COMMIT_RUNTIME
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = True
 
     def __init__(
         self,

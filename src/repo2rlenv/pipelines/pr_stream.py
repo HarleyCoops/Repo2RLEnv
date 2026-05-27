@@ -76,6 +76,7 @@ class PRStreamPipeline:
 
     name: ClassVar[PipelineName] = PipelineName.PR_STREAM
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = True
 
     def __init__(
         self,

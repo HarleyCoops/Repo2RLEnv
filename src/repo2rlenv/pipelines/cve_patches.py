@@ -92,6 +92,7 @@ class CVEPatchesPipeline:
 
     name: ClassVar[PipelineName] = PipelineName.CVE_PATCHES
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = True
 
     def __init__(
         self,

@@ -223,6 +223,7 @@ class EquivalenceTestsPipeline:
 
     name: ClassVar[PipelineName] = PipelineName.EQUIVALENCE_TESTS
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = True
     supported_languages: ClassVar[frozenset[LanguageHint] | None] = frozenset({LanguageHint.PYTHON})
 
     def __init__(

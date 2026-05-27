@@ -99,6 +99,13 @@ def cmd_generate(args: argparse.Namespace) -> int:
         )
         return 2
 
+    if getattr(pipeline_cls, "experimental", False):
+        console.warn(
+            f"'{gen_input.pipeline.name.value}' is an EXPERIMENTAL pipeline — its "
+            "interface and output may change without notice, and its quality is not "
+            "yet on par with the stable pipelines (pr_diff, pr_runtime). Proceeding."
+        )
+
     options = parse_options(gen_input.pipeline.name.value, gen_input.pipeline.options)
 
     # Pre-flight: does this pipeline support this repo's primary language?

@@ -759,6 +759,7 @@ class PRRuntimePipeline:
 
     name: ClassVar[PipelineName] = PipelineName.PR_RUNTIME
     requires_bootstrap: ClassVar[bool] = True
+    experimental: ClassVar[bool] = False  # stable
 
     def __init__(
         self,

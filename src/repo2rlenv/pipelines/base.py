@@ -82,6 +82,10 @@ class Pipeline(Protocol):
     # Set to a frozenset of LanguageHint values to restrict (e.g. Python-only
     # pipelines that parse AST or emit pytest verifiers).
     supported_languages: ClassVar[frozenset[LanguageHint] | None] = None
+    # Experimental pipelines run normally but emit a warning first: their
+    # interface/output may change without notice and quality is not yet on par
+    # with the stable set. `cmd_generate` surfaces the warning before running.
+    experimental: ClassVar[bool] = False
 
     def __init__(
         self,

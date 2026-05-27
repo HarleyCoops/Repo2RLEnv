@@ -1,10 +1,24 @@
-# Repo2RLEnv
+<p align="center">
+  <h1 align="center">Repo2RLEnv</h1>
+  <p align="center"><b>Turn any GitHub repository into a verifiable RL environment for training and evaluation.</b></p>
+</p>
 
-**Turn any repository into an RL environment for training and evaluation.**
+<p align="center">
+  <a href="https://pypi.org/project/repo2rlenv/"><img alt="PyPI" src="https://img.shields.io/pypi/v/repo2rlenv?color=blue"></a>
+  <a href="https://pypi.org/project/repo2rlenv/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/repo2rlenv"></a>
+  <a href="https://github.com/huggingface/Repo2RLEnv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/huggingface/Repo2RLEnv/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache%202.0-green"></a>
+  <a href="https://github.com/harbor-framework/harbor"><img alt="Harbor" src="https://img.shields.io/badge/spec-Harbor-FFD21F"></a>
+</p>
 
-> ⚠️ **Experimental.** This is a research project in active development. APIs, spec fields, and CLI flags change between minor versions. Pin to a specific release if you depend on it; expect breaking changes on `main`.
+<p align="center">
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#pipelines">Pipelines</a> ·
+  <a href="#what-you-get-out">Output</a> ·
+  <a href="#documentation">Docs</a>
+</p>
 
-Repo2RLEnv synthesizes verifiable data from existing repositories using pluggable pipelines, exports it into a uniform spec, and pushes straight to the Hugging Face Hub. End-to-end — **synthesis → standardize → train + eval** — with the focus on training. The uniform spec is [Harbor](https://github.com/harbor-framework/harbor)'s, so the datasets you produce drop straight into any Harbor-compatible runtime.
+Repo2RLEnv synthesizes **verifiable** training and evaluation data from existing repositories, exports it into a uniform spec, and pushes it straight to the Hugging Face Hub. The output spec is [Harbor](https://github.com/harbor-framework/harbor)'s, so every dataset you produce drops directly into any Harbor-compatible runtime — no glue code.
 
 ```
   ╭──────────────╮     ╭──────────────╮     ╭──────────────╮     ╭──────────────────╮
@@ -14,8 +28,6 @@ Repo2RLEnv synthesizes verifiable data from existing repositories using pluggabl
                        └──────────────────────── Repo2RLEnv ────────────────────────┘
 ```
 
----
-
 ## Quickstart
 
 ```bash
@@ -24,148 +36,108 @@ uv add repo2rlenv                                 # add to a uv-managed project
 uvx repo2rlenv --help                             # one-shot, no install
 pip install repo2rlenv                            # classic
 
-# Auth: nothing to set up if you've done `gh auth login` and `huggingface-cli login`
+# Auth: nothing to set up if you've done `gh auth login` and `huggingface-cli login`.
 # Otherwise:  export GITHUB_TOKEN=... ; export HF_TOKEN=...
 
 # Generate a dataset locally
 repo2rlenv generate \
   --repo <owner>/<repo> \
-  --pipeline pr_diff \
+  --pipeline pr_runtime \
   --pipeline-opt limit=5 \
   --llm anthropic/claude-sonnet-4-6 \
   --out ./datasets/<dataset-name>
 
-# Validate the emitted dataset (fast structural check)
+# Validate (fast structural check) and publish
 repo2rlenv validate ./datasets/<dataset-name>
-
-# Publish to HF Hub
 repo2rlenv push ./datasets/<dataset-name> <your-org>/<dataset-name>
 
-# Pull a published dataset back later
+# Anyone can pull + run a published dataset on a fresh machine
 repo2rlenv pull <your-org>/<dataset-name> ./datasets/<dataset-name>
-
-# Anyone can pull + run a published dataset on a fresh machine:
-harbor download --registry-url https://huggingface.co/datasets/<your-org>/<dataset-name>
-harbor run --agent oracle --path ./<dataset-name>/<task-id>
-# `pr_diff` ships a thin python:3.12-slim env with a multi-component
-# diff-similarity verifier. `pr_runtime` / `commit_runtime` / etc. need
-# their bootstrap-built env (registry-pulled, no rebuild required).
+harbor run -p ./datasets/<dataset-name> -a oracle --env docker
 ```
 
 Full walkthrough in [**`docs/quickstart.md`**](./docs/quickstart.md).
 
----
-
 ## Pipelines
 
-Nine pluggable synthesis methods. Each takes the same input shape (a repo + config) and emits Harbor-shaped tasks; they differ in **what** verifiable signal they manufacture.
+A pipeline takes a repo + config and emits Harbor-shaped tasks; pipelines differ in **what** verifiable signal they manufacture. Two are stable and recommended for production use; the rest are **experimental** — usable today (the CLI prints a warning before they run), but their interface and output quality are still evolving.
 
-**Every pipeline uses an LLM somewhere** — either inside the task (synthesis or judging) or during bootstrap (one-time env construction, then cached). The "LLM use" column shows the dominant location.
+### Stable
 
-| Pipeline | What it does | Sandbox | LLM use | Languages | Inspiration | Docs |
-|---|---|:-:|---|---|---|:-:|
-| [`pr_diff`](./docs/pipelines/pr_diff.md) | Mine merged PR diffs and turn them into Harbor-runnable envs. Each task ships a `python:3.12-slim` image with the repo cloned at the PR base. A 6-component verifier scores the agent's edit against the oracle: format / size / file-targeting (F1) / region-overlap / changes-only similarity / **LLM-as-judge** for semantic correctness. **100 envs published**: [`AdithyaSK/repo2rlenv-pr-diff`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-diff). | thin¹ | at verify (judge) | any | [SWE-RL](https://github.com/facebookresearch/swe-rl) | [📄](./docs/pipelines/pr_diff.md) |
-| [`pr_runtime`](./docs/pipelines/pr_runtime.md) | Mine merged PRs and verify each one **inside the bootstrap sandbox** — the F2P/P2P test split must flip from FAIL→PASS when the oracle patch is applied. Strongest signal of the runtime pipelines. | ✅ | at bootstrap (cached) | Py · Node · Go · Rust | [SWE-bench](https://github.com/SWE-bench/SWE-bench) | [📄](./docs/pipelines/pr_runtime.md) |
-| [`pr_stream`](./docs/pipelines/pr_stream.md) | Continuous variant of `pr_runtime` — watermark-based incremental mining for monthly cron jobs. Same oracle shape; just adds an `after_iso` flag and a state file. | ✅ | at bootstrap (cached) | Py · Node · Go · Rust | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) | [📄](./docs/pipelines/pr_stream.md) |
-| [`commit_runtime`](./docs/pipelines/commit_runtime.md) | Mine **commit history** directly, bypassing PR-review filters. Catches small "drive-by" fixes that never went through a PR. Same verifier as `pr_runtime`. | ✅ | at bootstrap (cached) | Py · Node · Go · Rust | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) | [📄](./docs/pipelines/commit_runtime.md) |
-| [`mutation_bugs`](./docs/pipelines/mutation_bugs.md) | **Synthesize** training tasks: AST-level bug mutations (operator flip, constant edit, …) into real source files until at least one test breaks. The agent must restore green. LLM ranks candidate bugs for plausibility. | ✅ | at synthesis | Py only | [SWE-smith](https://github.com/SWE-bench/SWE-smith) | [📄](./docs/pipelines/mutation_bugs.md) |
-| [`code_instruct`](./docs/pipelines/code_instruct.md) | Repo-anchored OSS-Instruct: LLM reads a real source file, writes a plausible problem + executable verifier, and the verifier runs against the agent's solution inside the sandbox. | ✅ | at synthesis | Py only | [Magicoder](https://github.com/ise-uiuc/magicoder) | [📄](./docs/pipelines/code_instruct.md) |
-| [`equivalence_tests`](./docs/pipelines/equivalence_tests.md) | Extract a real function as the reference; LLM authors equivalence tests that compare the agent's reimplementation against the original (`reference_<name>`) on a generated input distribution. | ✅ | at synthesis | Py only | [R2E](https://github.com/r2e-project/r2e) | [📄](./docs/pipelines/equivalence_tests.md) |
-| [`cve_patches`](./docs/pipelines/cve_patches.md) | OSV-driven security tasks: map CVE → fix commit → Harbor task. Reuses `pr_runtime`'s verifier — the security fix flips F2P. | ✅ | at bootstrap (cached) | Py · Node · Go · Rust | [PatchSeeker / CVE-Bench](https://github.com/hungkien05/PatchSeeker) | [📄](./docs/pipelines/cve_patches.md) |
-| [`refactor_synthesis`](./docs/pipelines/refactor_synthesis.md) | Mine rename-refactor commits via commit-message regex + multi-criteria diff verification. Multi-criteria verifier (structural + behavioral). Python-native — drops the JVM RefactoringMiner dep. | ✅ | at bootstrap (cached) | Py only | Python-native (drops [RefactoringMiner](https://github.com/tsantalis/RefactoringMiner)) | [📄](./docs/pipelines/refactor_synthesis.md) |
+| Pipeline | What it does | Languages | Inspired by |
+|---|---|---|---|
+| [**`pr_diff`**](./docs/pipelines/pr_diff.md) | Mine merged PR diffs into text-only tasks. A 6-component verifier (format / size / file-targeting / region-overlap / changes-only similarity / LLM-as-judge) scores the agent's edit against the oracle. Ships a thin `python:3.12-slim` env — no per-repo bootstrap. | any | [SWE-RL](https://github.com/facebookresearch/swe-rl) |
+| [**`pr_runtime`**](./docs/pipelines/pr_runtime.md) | SWE-bench-style: mine merged PRs and verify each **inside a Docker sandbox** — the `FAIL_TO_PASS` / `PASS_TO_PASS` test split must flip FAIL→PASS under the oracle patch. Graded reward + tracked/strict resolution. The strongest signal. | Py · Go · Node · Rust | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
 
-¹ `pr_diff` skips the bootstrap LLM entirely (no per-repo env build) — it ships a generic `python:3.12-slim` image with a base64-baked verifier and the oracle. The LLM only fires at *verify* time, as one of six reward components, and degrades gracefully (`status=no_api_key`) when no key is set.
+**Published reference datasets:** [`AdithyaSK/repo2rlenv-pr-diff`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-diff) · [`AdithyaSK/repo2rlenv-pr-runtime`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-runtime) (100 oracle-verified envs each).
 
-Python repos exercise all 9 pipelines; other supported languages exercise the 5 language-agnostic ones. Polyglot mutation + non-Python synthesis are on the v0.9 roadmap.
+### Experimental
 
-Every pipeline flows through the same QA gate (determinism, oracle consistency, LLM judge, false-negative filter) before tasks are admitted to a dataset. Text-only pipelines skip the heavy QA layers since there's no execution to validate. See [`docs/pipelines/README.md`](./docs/pipelines/README.md) for reward kinds, GPU requirements, and the per-pipeline reference dataset cards.
+> These run normally but emit a warning first. Interfaces and output quality are still being tuned — pin a release if you depend on them.
 
----
+| Pipeline | What it does | Languages | Inspired by |
+|---|---|---|---|
+| [`pr_stream`](./docs/pipelines/pr_stream.md) | Continuous variant of `pr_runtime` — watermark-based incremental mining for monthly cron jobs (contamination-resistant eval sets). Same oracle; adds an `after_iso` filter + state file. | Py · Go · Node · Rust | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) |
+| [`commit_runtime`](./docs/pipelines/commit_runtime.md) | Mine **commit history** directly, bypassing PR-review filters — catches small "drive-by" fixes. Same verifier as `pr_runtime`. | Py · Go · Node · Rust | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) |
+| [`cve_patches`](./docs/pipelines/cve_patches.md) | OSV-driven security tasks: map CVE → fix commit → Harbor task. Reuses `pr_runtime`'s verifier — the fix flips F2P. | Py · Go · Node · Rust | [PatchSeeker](https://github.com/hungkien05/PatchSeeker) |
+| [`mutation_bugs`](./docs/pipelines/mutation_bugs.md) | **Synthesize** tasks: inject AST-level bug mutations into real source until a test breaks; the agent must restore green. LLM ranks bugs for plausibility. | Py | [SWE-smith](https://github.com/SWE-bench/SWE-smith) |
+| [`code_instruct`](./docs/pipelines/code_instruct.md) | Repo-anchored OSS-Instruct: LLM reads a real source file, writes a plausible problem + executable verifier, and the verifier runs against the agent's solution. | Py | [Magicoder](https://github.com/ise-uiuc/magicoder) |
+| [`equivalence_tests`](./docs/pipelines/equivalence_tests.md) | Extract a real function as the reference; LLM authors equivalence tests comparing the agent's reimplementation against the original on a generated input distribution. | Py | [R2E](https://github.com/r2e-project/r2e) |
+| [`refactor_synthesis`](./docs/pipelines/refactor_synthesis.md) | Mine rename-refactor commits via commit-message regex + a multi-criteria (structural + behavioral) diff verifier. Python-native — no JVM dependency. | Py | drops [RefactoringMiner](https://github.com/tsantalis/RefactoringMiner) |
 
-## Bootstrap (sandbox-required pipelines)
+Every pipeline except `pr_diff` runs its target repo inside a Docker sandbox built once by the [bootstrap phase](#bootstrap) and cached. See [`docs/pipelines/README.md`](./docs/pipelines/README.md) for reward kinds, per-pipeline options, and dataset cards.
 
-Pipelines marked with a sandbox ✅ above need a working Docker environment for the target repo before they can run. Repo2RLEnv's **bootstrap phase** handles this automatically — an LLM agent iterates shell commands inside a fresh Docker container until the repo builds and the test suite collects. The working image is committed, content-addressed, and cached, so the expensive env-construction step runs **once per (repo, ref)** and every downstream task reuses it. Pure text pipelines (`pr_diff`) skip it entirely.
+## Bootstrap
 
-You don't normally invoke it directly — `repo2rlenv generate --pipeline pr_runtime ...` auto-triggers a cache lookup and runs bootstrap on miss. But you can pre-warm it or use it standalone for debugging:
+Sandbox pipelines need a working Docker environment for the target repo. Repo2RLEnv's **bootstrap phase** builds it automatically — an LLM agent iterates shell commands inside a fresh container until the repo builds and its test suite collects, then commits and content-addresses the image. The expensive step runs **once per (repo, ref)**; every downstream task reuses the cache. `pr_diff` skips it entirely.
 
 ```bash
-repo2rlenv bootstrap \
-  --repo <owner>/<repo> \
-  --llm anthropic/claude-sonnet-4-6
+repo2rlenv bootstrap --repo <owner>/<repo> --llm anthropic/claude-sonnet-4-6
 ```
 
-Full design + cache layout + cost-tracking + spec extension fields: [`docs/reference/BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md).
-
----
+Design, cache layout, cost tracking: [`docs/reference/BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md).
 
 ## What you get out
 
-A dataset format that:
+A dataset that:
 
-- Is **verifiable** — every task carries either an executable test (`test_execution`) or a stored oracle diff (`diff_similarity`); your trainer picks the reward type
-- Is **content-addressed** — `content_hash` over each task; same artifacts ⇒ same hash
-- **Trains anywhere via Harbor** — TRL, SkyRL, Prime-RL, Tinker, Miles, Slime, harbor.rl
+- **Is verifiable** — every task carries an executable test (`test_execution`) or a stored oracle diff (`diff_similarity`); your trainer picks the reward type.
+- **Is content-addressed** — a `content_hash` over each task; identical artifacts ⇒ identical hash.
+- **Trains anywhere via Harbor** — TRL, SkyRL, Prime-RL, Tinker, Miles, Slime, harbor.rl.
 - **Evaluates with any agent harness** — Claude Code, OpenHands, Codex CLI, Gemini CLI, …
-- Is **language-agnostic** by spec — `_runtime` pipelines emit Dockerfile + shell verifier; `_diff` pipelines are pure text and work for any language with no extra config
-- **Publishes natively** to Hugging Face Hub — `repo2rlenv push ./datasets/<name> owner/name` writes a Harbor-compatible `registry.json` so consumers can `harbor download` (or `repo2rlenv pull`) without any glue
-- Supports **private repos** end-to-end — `gh auth token` resolved automatically; build secrets declared by name; verifier-time secrets forbidden by spec
-
----
+- **Is language-agnostic by spec** — runtime pipelines emit a Dockerfile + shell verifier; `pr_diff` is pure text and works for any language.
+- **Publishes natively** to the Hub — `repo2rlenv push` writes a Harbor-compatible `registry.json` so consumers `harbor download` (or `repo2rlenv pull`) with zero glue.
+- **Supports private repos** end-to-end — `gh auth token` resolved automatically; build secrets declared by name; verifier-time secrets forbidden by spec.
 
 ## Under the hood
 
-Repo2RLEnv emits datasets in the [Harbor](https://github.com/harbor-framework/harbor) task format. We don't ship our own sandbox, agent harness, or registry — Harbor already has those. We focus on **synthesis**: turning a real repo into verifiable, reproducible Harbor tasks. A small `[metadata.repo2env]` extension inside Harbor's `task.toml` carries provenance (pipeline name, base commit, PR URL, content hash, reward kinds, etc.).
+Repo2RLEnv emits datasets in the [Harbor](https://github.com/harbor-framework/harbor) task format. We don't ship our own sandbox, agent harness, or registry — Harbor already has those. We focus on **synthesis**: turning a real repo into verifiable, reproducible Harbor tasks. A small `[metadata.repo2env]` extension inside Harbor's `task.toml` carries provenance (pipeline, base commit, PR URL, content hash, reward kinds).
 
-By targeting Harbor we inherit its full stack: Local Docker / Modal / Daytona / E2B / Runloop sandboxes, every major coding-agent harness, parallel execution, the publishing CLI, and downstream hooks for [OpenReward](https://docs.openreward.ai) (which adds Miles, Slime to the trainer list).
-
----
+By targeting Harbor we inherit its full stack: Local Docker / Modal / Daytona / E2B / Runloop sandboxes, every major coding-agent harness, parallel execution, the publishing CLI, and downstream hooks for [OpenReward](https://docs.openreward.ai).
 
 ## Documentation
 
-Docs are organized into three tiers — see [`docs/README.md`](./docs/README.md) for the index.
-
-- 🚀 [**`docs/quickstart.md`**](./docs/quickstart.md) — install → first dataset → push to Hub, in 10 minutes
-- 📖 [**`docs/pipelines/`**](./docs/pipelines/README.md) — one page per synthesis pipeline (when to use, oracle shape, inspiration)
-- 📚 Reference contracts and module-level API:
-  - [`reference/SPEC.md`](./docs/reference/SPEC.md) — input/output contract
-  - [`reference/API.md`](./docs/reference/API.md) — Python API for `src/repo2rlenv/`
-  - [`reference/AUTH.md`](./docs/reference/AUTH.md) — GitHub / HF / LLM auth resolution
-  - [`reference/BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md) — LLM-iterated per-repo Docker image
-  - [`reference/AGENTS.md`](./docs/reference/AGENTS.md) — Harbor agent harnesses + RL trace plumbing
-- 🛠 [**`CONTRIBUTING.md`**](./CONTRIBUTING.md) — dev setup, PR conventions, commit style, release flow
-- 🧪 [**`contributing/ADDING_A_PIPELINE.md`**](./docs/contributing/ADDING_A_PIPELINE.md) — step-by-step cookbook for shipping a new pipeline
-
----
+- 🚀 [**`docs/quickstart.md`**](./docs/quickstart.md) — install → first dataset → push, in 10 minutes
+- 📖 [**`docs/pipelines/`**](./docs/pipelines/README.md) — one page per pipeline (when to use, oracle shape, options)
+- 📚 Reference contracts:
+  - [`SPEC.md`](./docs/reference/SPEC.md) — input/output contract
+  - [`API.md`](./docs/reference/API.md) — Python API for `src/repo2rlenv/`
+  - [`AUTH.md`](./docs/reference/AUTH.md) — GitHub / HF / LLM auth resolution
+  - [`BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md) — LLM-iterated per-repo Docker image
+  - [`AGENTS.md`](./docs/reference/AGENTS.md) — Harbor agent harnesses + RL trace plumbing
+- 🛠 [**`CONTRIBUTING.md`**](./CONTRIBUTING.md) — dev setup, PR conventions, release flow
+- 🧪 [**`ADDING_A_PIPELINE.md`**](./docs/contributing/ADDING_A_PIPELINE.md) — cookbook for shipping a new pipeline
 
 ## Adjacent projects
 
-Beyond the per-pipeline inspirations linked in the table above, Repo2RLEnv builds on or adjacent to:
-
-- [**Harbor**](https://github.com/harbor-framework/harbor) — the task format + runtime ecosystem we **adopt** as our output spec
-- [**RepoLaunch**](https://github.com/microsoft/RepoLaunch) (Microsoft) — LLM-agent-driven environment setup; our `bootstrap` is an independent reimplementation
-- [**OpenReward**](https://docs.openreward.ai) — ORS protocol + extra trainer integrations layered above Harbor
+- [**Harbor**](https://github.com/harbor-framework/harbor) — the task format + runtime we **adopt** as our output spec
+- [**RepoLaunch**](https://github.com/microsoft/RepoLaunch) (Microsoft) — LLM-agent env setup; our `bootstrap` is an independent reimplementation
+- [**OpenReward**](https://docs.openreward.ai) — ORS protocol + extra trainer integrations above Harbor
 - [**SWE-Gym**](https://github.com/SWE-Gym/SWE-Gym) — RL-environment framing for SWE-bench-style tasks
-- [**SWE-Bench++**](https://arxiv.org/abs/2512.17419) — four-stage QA pipeline we'll re-implement
 - [**verifiers**](https://github.com/willccbb/verifiers) (Prime Intellect), [**OpenEnv**](https://github.com/meta-pytorch/OpenEnv) (Meta + HF) — adjacent standardization efforts
 
-Every pipeline that draws from external work carries an Acknowledgment block in its `.py` file. No code is copied — implementations are independent and licensed Apache-2.0.
-
----
-
-## Status
-
-Pre-alpha.
-
-- **v0.1.0** shipped on PyPI: `pr_diff` + HF Hub publish + diff-similarity reward, end-to-end on any GitHub repo (public or private).
-- **v0.2**: bootstrap phase (LLM-driven Docker env), unified Rich UI, content-addressed cache, registry-qualified pullable digests. (rolled into v0.3 release)
-- **v0.3.0** shipped on PyPI: `pr_runtime` pipeline (sandbox-verified PR mining with `FAIL_TO_PASS` / `PASS_TO_PASS` oracle), auto-triggered bootstrap, structural quality filters, targeted test invocation.
-- **v0.4.0** shipped on PyPI: polyglot log parsers (Go / Cargo / Jest), Harbor end-to-end verification (Mean reward 1.0 on Go via `urfave/cli`).
-- **v0.5**: `pr_stream` (continuous PR mining, watermark-based) + `commit_runtime` (commit-level mining, SWE-GEN style); defensive git install in emitted Dockerfile so any bootstrap base image works. Harbor-verified on both. (rolled into v0.6 release)
-- **v0.6.0** shipped on PyPI: first LLM-synthesized pipelines — `mutation_bugs` (AST-based bug injection inspired by SWE-smith) + `code_instruct` (repo-anchored OSS-Instruct inspired by Magicoder, with executable verifiers). Harbor-verified on `pallets/click` (Mean reward 1.000 on both). 271/271 tests passing.
-- **v0.7.0** shipped on PyPI: `equivalence_tests` (R2E-style function-level synthesis — extract a real function, LLM writes equivalence tests, gold patch fills in the candidate with the original) + `cve_patches` (OSV-driven security-fix mining — CVE → fix commit → Harbor task). Harbor-verified on `pallets/click` and `pallets/werkzeug` (Mean reward 1.000 on both).
-- **v0.8.0** shipped on PyPI: `refactor_synthesis` (Python-native rename-refactor mining — drop the JVM RefactoringMiner dep; commit-message regex + diff verification + multi-criteria verifier). Harbor-verified on `pallets/click` (Mean reward 1.000). All 8 originally-planned pipelines now shipped.
-- **v0.9 planned**: LLM-judged QA gate (SWE-Bench++ four-layer recipe) + iterative refinement for `equivalence_tests` + LLM-synthesized PoC tests for `cve_patches` + HF Hub append-mode for `pr_stream` + polyglot mutation (Java/JS/Go via tree-sitter) + Extract Method / Inline-function refactor kinds for `refactor_synthesis`.
+Every pipeline that draws from external work carries an Acknowledgment block in its `.py` file. No code is copied — implementations are independent and Apache-2.0 licensed.
 
 ## License
 
-Apache 2.0 — see [LICENSE](./LICENSE).
+[Apache 2.0](./LICENSE). The original PR/commit contents remain under their respective source-repo licenses; datasets redistribute public commits for ML research under fair use.
