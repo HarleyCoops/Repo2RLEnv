@@ -148,7 +148,7 @@ def _reward_doc_for(pipeline: str) -> str:
     on another's card (e.g. pr_runtime is test-execution F2P/P2P, NOT the
     pr_diff LLM-as-judge).
     """
-    if pipeline in ("pr_runtime", "commit_runtime", "pr_stream", "cve_patches"):
+    if pipeline in ("pr_runtime", "commit_runtime", "cve_patches"):
         return (
             "The reward is **test-execution (graded F2P/P2P)**. After your patch is "
             "applied, `tests/test.sh` runs the suite and a baked verifier scores "

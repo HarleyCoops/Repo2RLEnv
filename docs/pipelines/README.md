@@ -19,13 +19,12 @@ flowchart LR
 
 ## Pipelines
 
-All 9 pipelines are shipped. See per-pipeline pages for the recipe + options + Harbor verification status.
+All 8 pipelines are shipped — 2 stable (`pr_diff`, `pr_runtime`), 6 experimental. See per-pipeline pages for the recipe + options + Harbor verification status.
 
 | Pipeline | What it produces | Sandbox | LLM use | GPU helpful? | Reference dataset | Inspiration |
 |---|---|:-:|---|:-:|---|---|
 | [`pr_diff`](./pr_diff.md) | Harbor-runnable env + 6-component diff-similarity reward (deterministic 5 + LLM judge) | thin¹ | at verify (judge, optional) | No | [`AdithyaSK/repo2rlenv-pr-diff`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-diff) (100) | [SWE-RL](https://github.com/facebookresearch/swe-rl) |
-| [`pr_runtime`](./pr_runtime.md) | Sandbox-verified PR with F2P/P2P test oracle | ✅ | at bootstrap (cached) | ML repos | — | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
-| [`pr_stream`](./pr_stream.md) | Watermarked `pr_runtime` for continuous mining | ✅ | at bootstrap (cached) | Same as `pr_runtime` | — | [SWE-bench-Live](https://github.com/microsoft/SWE-bench-Live) + [RepoLaunch](https://github.com/microsoft/RepoLaunch) |
+| [`pr_runtime`](./pr_runtime.md) | Sandbox-verified PR with F2P/P2P test oracle | ✅ | at bootstrap (cached) | ML repos | [`AdithyaSK/repo2rlenv-pr-runtime`](https://huggingface.co/datasets/AdithyaSK/repo2rlenv-pr-runtime) (100) | [SWE-bench](https://github.com/SWE-bench/SWE-bench) |
 | [`commit_runtime`](./commit_runtime.md) | Commit-level oracle (bypass PR-review filters) | ✅ | at bootstrap (cached) | ML repos | — | [R2E-Gym SWE-GEN](https://github.com/R2E-Gym/R2E-Gym) |
 | [`mutation_bugs`](./mutation_bugs.md) | AST mutation that breaks a test; agent must restore green | ✅ | at synthesis (rank candidates) | Same as test suite | — | [SWE-smith](https://github.com/SWE-bench/SWE-smith) |
 | [`code_instruct`](./code_instruct.md) | LLM-authored problem + executable verifier anchored to real source | ✅ | at synthesis (problem + verifier) | Sometimes | — | [Magicoder](https://github.com/ise-uiuc/magicoder) |
@@ -134,7 +133,6 @@ For the full design rationale + dataset card layout + pilot evidence, see [`pr_d
 | `mutation_bugs` | (oracle as diff) | ✅ |
 | `code_instruct` | optional | ✅ |
 | `equivalence_tests` | — | ✅ |
-| `pr_stream` | ✅ | ✅ |
 | `cve_patches` | ✅ | ✅ |
 | `refactor_synthesis` | ✅ | ✅ |
 

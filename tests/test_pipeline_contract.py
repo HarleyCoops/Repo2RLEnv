@@ -82,7 +82,7 @@ def test_python_only_pipelines_declare_supported_languages():
 
 def test_language_agnostic_pipelines_have_no_restriction():
     """Lite + language-agnostic full pipelines must NOT restrict languages."""
-    agnostic = {"pr_diff", "pr_runtime", "pr_stream", "commit_runtime", "cve_patches"}
+    agnostic = {"pr_diff", "pr_runtime", "commit_runtime", "cve_patches"}
     for name in agnostic:
         cls = PIPELINES[name]
         supported = getattr(cls, "supported_languages", None)

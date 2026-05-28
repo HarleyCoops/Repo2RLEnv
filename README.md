@@ -89,7 +89,7 @@ Each agent's per-task reward lands in `/logs/verifier/reward.json`, ready for tr
 
 ## Pipelines
 
-A pipeline turns a repo into Harbor tasks. **Two are stable** and recommended for production; **seven are experimental** — usable today (the CLI prints a warning before they run), with interfaces and output quality still evolving.
+A pipeline turns a repo into Harbor tasks. **Two are stable** and recommended for production; **six are experimental** — usable today (the CLI prints a warning before they run), with interfaces and output quality still evolving.
 
 ### Stable
 
@@ -103,7 +103,6 @@ A pipeline turns a repo into Harbor tasks. **Two are stable** and recommended fo
 
 > These run normally but emit a warning first — pin a release if you depend on them. Each links to its own page; the gist:
 
-- **[`pr_stream`](./docs/pipelines/pr_stream.md)** — `pr_runtime` on a schedule: incremental, watermark-based mining for contamination-resistant eval sets.
 - **[`commit_runtime`](./docs/pipelines/commit_runtime.md)** — mines commit history directly, catching fixes that never went through a PR.
 - **[`cve_patches`](./docs/pipelines/cve_patches.md)** — security tasks from public CVEs, mapped to their fix commits.
 - **[`mutation_bugs`](./docs/pipelines/mutation_bugs.md)** — injects synthetic bugs into real code; the agent must restore the tests to green.
@@ -117,7 +116,6 @@ A pipeline turns a repo into Harbor tasks. **Two are stable** and recommended fo
 |---|:-:|:-:|---|---|
 | `pr_diff` | stable | thin | at verify — judges the solution | any |
 | `pr_runtime` | stable | ✅ | at env build — one-time, cached | Py · Go · Node · Rust |
-| `pr_stream` | experimental | ✅ | at env build — one-time, cached | Py · Go · Node · Rust |
 | `commit_runtime` | experimental | ✅ | at env build — one-time, cached | Py · Go · Node · Rust |
 | `cve_patches` | experimental | ✅ | at env build — one-time, cached | Py · Go · Node · Rust |
 | `mutation_bugs` | experimental | ✅ | at synthesis — writes the task | Py |
@@ -179,6 +177,7 @@ Full cookbook (oracle invariant, reward design, QA gate): [**`docs/contributing/
   - [`SPEC.md`](./docs/reference/SPEC.md) — input/output contract
   - [`API.md`](./docs/reference/API.md) — Python API for `src/repo2rlenv/`
   - [`AUTH.md`](./docs/reference/AUTH.md) — GitHub / HF / LLM auth resolution
+  - [`ENV.md`](./docs/reference/ENV.md) — every environment variable the tool reads, in one place
   - [`BOOTSTRAP.md`](./docs/reference/BOOTSTRAP.md) — LLM-iterated per-repo Docker image
   - [`AGENTS.md`](./docs/reference/AGENTS.md) — Harbor agent harnesses + RL trace plumbing
 - 🛠 [**`CONTRIBUTING.md`**](./CONTRIBUTING.md) — dev setup, PR conventions, release flow

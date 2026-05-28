@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Literal
@@ -13,7 +14,6 @@ class PipelineName(StrEnum):
     # Mined from upstream history
     PR_DIFF = "pr_diff"  # text-only PR mining (was: pr_mining_lite)
     PR_RUNTIME = "pr_runtime"  # PR mining w/ sandbox verification (was: pr_mining)
-    PR_STREAM = "pr_stream"  # continuous live PR mining (was: live_pr_mining)
     COMMIT_RUNTIME = "commit_runtime"  # commit-level mining w/ sandbox (was: commit_mining)
     CVE_PATCHES = "cve_patches"  # CVE patches as training data (was: cve_mining)
     # Synthesized by LLM
@@ -157,7 +157,7 @@ class BootstrapSpec(BaseModel):
     max_seconds: int = 1800  # 30-minute timeout per bootstrap
     base_image: str | None = None  # override per-language default
     user_dockerfile: Path | None = None  # bypass agent iteration entirely
-    cache_dir: Path = Field(default_factory=lambda: Path("./envs"))
+    cache_dir: Path = Field(default_factory=lambda: Path(os.environ.get("R2E_CACHE_DIR", "./envs")))
     image_registry: str | None = None  # e.g. "ghcr.io/myorg"; None ⇒ keep local
     max_llm_spend_usd: float | None = 5.0
     platform: Literal["linux/amd64", "linux/arm64"] = "linux/amd64"

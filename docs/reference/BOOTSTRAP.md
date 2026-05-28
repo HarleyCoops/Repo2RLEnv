@@ -42,7 +42,7 @@ Some pipelines work on any language (they operate on diffs, PRs, commits); other
 
 | Pipeline | Languages |
 |---|---|
-| `pr_diff`, `pr_runtime`, `pr_stream`, `commit_runtime`, `cve_patches` | any |
+| `pr_diff`, `pr_runtime`, `commit_runtime`, `cve_patches` | any |
 | `mutation_bugs`, `code_instruct`, `equivalence_tests`, `refactor_synthesis` | Python only |
 
 The CLI runs a pre-flight check: if you point a Python-only pipeline at a non-Python repo, generation aborts before bootstrap even starts so you don't burn 5+ minutes finding out. Pass `--force-language` to skip the check and proceed anyway (the pipeline will likely emit zero tasks; explicit user choice).

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -1002,7 +1003,11 @@ def main(argv: list[str] | None = None) -> int:
     bs.add_argument("--llm", required=True, help="provider/model, e.g. anthropic/claude-sonnet-4-6")
     bs.add_argument("--max-iterations", type=int, default=25)
     bs.add_argument("--max-seconds", type=int, default=1800)
-    bs.add_argument("--cache-dir", default="./envs")
+    bs.add_argument(
+        "--cache-dir",
+        default=os.environ.get("R2E_CACHE_DIR", "./envs"),
+        help="bootstrap image cache root (env: R2E_CACHE_DIR, default ./envs)",
+    )
     bs.add_argument("--image-registry", help="e.g. ghcr.io/myorg/r2e — pushes after build")
     bs.add_argument("--platform", default="linux/amd64", choices=["linux/amd64", "linux/arm64"])
     bs.add_argument("--language", help="override auto-detection: python|node|go|rust|java|c_cpp")

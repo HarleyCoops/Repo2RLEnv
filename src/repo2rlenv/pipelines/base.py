@@ -136,7 +136,7 @@ def check_language_compatibility(
         f"\n"
         f"This pipeline can't produce valid tasks on {detected_name} code. Options:\n"
         f"  - Pick a language-agnostic pipeline "
-        f"(pr_runtime / commit_runtime / cve_patches / pr_diff / pr_stream)\n"
+        f"(pr_diff / pr_runtime / commit_runtime / cve_patches)\n"
         f"  - Re-run with --force-language to skip this check "
         f"(the pipeline will likely emit 0 tasks)"
     )

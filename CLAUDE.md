@@ -218,11 +218,11 @@ uv add --dev <pkg>      # dev only
 - **v0.2** merged into main: bootstrap phase, Rich UI module, cost tracking, content-addressed cache keyed on bootstrap options
 - **v0.3.0** shipped on PyPI: `pr_runtime` (sandbox-verified PR mining) + auto-trigger bootstrap from `generate` + structural quality filters + targeted test invocation + CI/CD (ruff + matrix tests + release workflow)
 - **v0.4.0** shipped on PyPI: polyglot log parsers (Go / Cargo / Jest) + Harbor end-to-end compliance fixes (task.name format, solve.sh shim, /logs/verifier/reward.txt, PATH prelude for non-Python toolchains, defensive git install)
-- **v0.5.0** shipped on PyPI: `pr_stream` (continuous PR mining with watermark state) + `commit_runtime` (commit-level mining, SWE-GEN style). Both Harbor-verified.
+- **v0.5.0** shipped on PyPI: `pr_stream` (continuous PR mining with watermark state — removed in v0.8.3 as scope-creep; pr_runtime handles the same niche on its own) + `commit_runtime` (commit-level mining, SWE-GEN style). Both Harbor-verified.
 - **v0.6.0** shipped on PyPI: first LLM-synthesized pipelines — `mutation_bugs` (procedural AST bug injection inspired by SWE-smith) + `code_instruct` (repo-anchored OSS-Instruct with executable verifiers, inspired by Magicoder). Both Harbor-verified on `pallets/click` (Mean reward 1.000).
 - **v0.7.0** shipped on PyPI: `equivalence_tests` (R2E-style function-level synthesis — extract real function, LLM writes equivalence test against `reference_<name>` oracle, gold patch fills the candidate) + `cve_patches` (OSV-driven CVE→fix-commit pipeline, reuses pr_runtime validation harness). Both Harbor-verified.
 - **v0.8.0** shipped on PyPI: `refactor_synthesis` (Python-native rename-refactor mining — drops the v1.0-planned JVM RefactoringMiner dep; commit-message regex + diff verification + multi-criteria structural+behavioral verifier). Harbor-verified on `pallets/click` (Mean reward 1.000). **All 9 pipelines now shipped. 622/622 tests pass.**
-- **v0.9 planned**: LLM-judged QA gate (SWE-Bench++ four-layer recipe), iterative refinement loop for `equivalence_tests`, LLM-synthesized PoC for `cve_patches`, Extract Method / Inline kinds for `refactor_synthesis`, HF Hub append-mode for `pr_stream`, polyglot mutation (tree-sitter)
+- **v0.9 planned**: LLM-judged QA gate (SWE-Bench++ four-layer recipe), iterative refinement loop for `equivalence_tests`, LLM-synthesized PoC for `cve_patches`, Extract Method / Inline kinds for `refactor_synthesis`, polyglot mutation (tree-sitter)
 - No more pipelines planned in `docs/pipelines/` — see [`docs/pipelines/README.md`](./docs/pipelines/README.md) for the full table
 
 ### Naming convention (post-rename)
@@ -230,7 +230,6 @@ uv add --dev <pkg>      # dev only
 Pipelines follow `{source}_{shape}`:
 - `_diff` — text-only generation, no sandbox at gen time (e.g. `pr_diff`). NB: `pr_diff` still emits a thin Docker env so the diff-similarity reward runs under `harbor` — "no sandbox" refers to generation, not consumption.
 - `_runtime` — runs inside the bootstrap sandbox to verify the oracle (e.g. `pr_runtime`, `commit_runtime`)
-- `_stream` — continuous mining variant
 - `_bugs` / `_patches` / `_instruct` / `_tests` / `_synthesis` — name of the artifact type for synthesized pipelines
 
 If anything in this file conflicts with the actual code, **trust the code** and fix this file.

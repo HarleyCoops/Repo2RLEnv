@@ -79,28 +79,6 @@ class PRDiffOptions(_BaseOptions):
     min_loc_changed: int = 3
 
 
-class PRStreamOptions(PRRuntimeOptions):
-    """Continuous (SWE-bench-Live-style) PR mining.
-
-    `pr_stream` is `pr_runtime` + state. Re-running the same command later
-    picks up where the previous run left off — only NEW PRs (those merged
-    after the watermark) are processed. The watermark advances after each
-    successful run.
-
-    Inherits every PRRuntimeOptions field. Adds:
-      cutoff_date         — earliest merged_at to mine; combines with the
-                            watermark via `since = max(cutoff_date, watermark)`.
-                            Use this to scope mining to post-model-cutoff
-                            PRs (contamination-resistant).
-      state_dir           — where the watermark JSON lives. Defaults to
-                            `./envs/streams/` so it sits alongside bootstrap
-                            cache without polluting the dataset out_dir.
-    """
-
-    cutoff_date: date | None = None
-    state_dir: str = "./envs"
-
-
 class CommitRuntimeOptions(_BaseOptions):
     """Commit-level mining (R2E-Gym SWE-GEN style).
 
@@ -339,7 +317,6 @@ class EquivalenceTestsOptions(_BaseOptions):
 OPTIONS_REGISTRY: dict[str, type[_BaseOptions]] = {
     "pr_runtime": PRRuntimeOptions,
     "pr_diff": PRDiffOptions,
-    "pr_stream": PRStreamOptions,
     "commit_runtime": CommitRuntimeOptions,
     "mutation_bugs": MutationBugsOptions,
     "code_instruct": CodeInstructOptions,
