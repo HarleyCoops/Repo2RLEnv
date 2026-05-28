@@ -133,6 +133,183 @@ def test_metadata_filter_passes_a_good_commit():
     assert pipe._metadata_filter(_make_commit()) is None
 
 
+def test_metadata_filter_rejects_non_bugfix_types():
+    """chore/docs/feat/refactor/style/test/ci/build/perf/revert are NOT bugfixes."""
+    pipe = _pipeline_for_filter_tests()
+    for prefix in (
+        "chore: bump",
+        "docs: typo fix",
+        "feat(api): new endpoint",
+        "refactor: rename helper",
+        "style: black format",
+        "test: add coverage",
+        "ci: pin actions",
+        "build: drop py3.10",
+        "perf: hot loop tweak",
+        "revert: revert previous change",
+    ):
+        c = _make_commit(subject=prefix, body="long enough body text here")
+        assert pipe._metadata_filter(c) == "non_bugfix_type", prefix
+
+
+def test_metadata_filter_no_bugfix_signal_is_rejected():
+    """No `fix:` prefix, no `Closes #N`, no bugfix keyword ⇒ rejected."""
+    pipe = _pipeline_for_filter_tests()
+    c = _make_commit(subject="Update README with new logo", body="")
+    assert pipe._metadata_filter(c) == "no_bugfix_signal"
+
+
+def test_metadata_filter_keeps_fix_prefix():
+    pipe = _pipeline_for_filter_tests()
+    c = _make_commit(subject="fix: off-by-one in pager", body="")
+    assert pipe._metadata_filter(c) is None
+
+
+def test_metadata_filter_keeps_linked_issue_even_without_keyword():
+    """A commit that links an issue (e.g. `Closes #42`) is a bugfix signal."""
+    pipe = _pipeline_for_filter_tests()
+    c = _make_commit(subject="Update token handling", body="Closes #42, see context.")
+    assert pipe._metadata_filter(c) is None
+
+
+def test_metadata_filter_keeps_bugfix_keyword_in_subject():
+    pipe = _pipeline_for_filter_tests()
+    c = _make_commit(subject="Repair broken parser regression on Windows", body="")
+    assert pipe._metadata_filter(c) is None
+
+
+# -------------------------- instruction leak strip ----------------------------
+
+
+def test_instruction_strips_fix_pr_link_leak():
+    """Markdown PR/commit links in the body must not leak into the instruction."""
+    commit = _make_commit(
+        body=(
+            "This bug was first noticed in [#1234](https://github.com/o/r/pull/1234) "
+            "and the fix is in commit 0123456789abcdef0123456789abcdef01234567. "
+            "Replaces the broken thing."
+        ),
+    )
+    out = build_instruction_from_commit(commit)
+    assert "1234" not in out
+    assert "0123456789abcdef" not in out
+    assert "Replaces the broken thing" in out  # context preserved
+
+
+def test_instruction_strips_leak_from_subject():
+    """Cross-references in the subject itself must also be stripped."""
+    commit = _make_commit(subject="fix: regression introduced in [#42](url)", body="")
+    out = build_instruction_from_commit(commit)
+    assert "#42" not in out
+
+
+def test_instruction_uses_issue_when_provided():
+    """When `issue=(title, body)` is supplied (issue-fetch fallback), the
+    problem statement comes from the issue — not the leak-prone commit msg."""
+    commit = _make_commit(
+        subject="fix: off-by-one in `Pager.advance`",  # leaks the function name
+        body="See [#42](https://github.com/o/r/issues/42)",
+    )
+    issue = (
+        "Pagination skips the last entry",
+        "When you click 'next' on the final page, the trailing entry vanishes.",
+    )
+    out = build_instruction_from_commit(commit, issue=issue)
+    # Issue text drives the prompt
+    assert "Pagination skips the last entry" in out
+    assert "trailing entry vanishes" in out
+    # And the commit-message leak ("Pager.advance", "off-by-one") does NOT appear
+    assert "Pager.advance" not in out
+    assert "off-by-one" not in out
+
+
+def test_instruction_reflows_long_body_with_template_noise():
+    """Verbose commit bodies get the same `_reflow_pr_body` cleanup as PRs:
+    drop HTML template comments, stop at checklist headers, collapse blanks."""
+    commit = _make_commit(
+        body=(
+            "<!-- thanks for the contribution -->\n"
+            "Real problem statement: parser crashes on empty input.\n\n\n\n"
+            "## Checklist\n"
+            "- [ ] tests added\n"
+            "- [ ] docs updated\n"
+        )
+    )
+    out = build_instruction_from_commit(commit)
+    assert "Real problem statement" in out
+    assert "thanks for the contribution" not in out
+    # Checklist noise stripped from the description
+    assert "tests added" not in out
+
+
+# -------------------------- _build_task metadata ------------------------------
+
+
+def _stub_pipeline_for_build_task(test_cmds=None, language="python"):
+    """A pipeline instance with just enough scaffolding to call `_build_task`."""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    pipe = CommitRuntimePipeline.__new__(CommitRuntimePipeline)
+    pipe.options = CommitRuntimeOptions()
+    pipe.bootstrap = SimpleNamespace(
+        image_tag="local/r2e-bootstrap/o__r:abc",
+        image_digest="local/r2e-bootstrap/o__r:abc",
+        pushed_to_registry=False,
+        test_cmds=test_cmds or ["pytest -v"],
+        language=SimpleNamespace(value=language),
+    )
+    pipe.input = MagicMock()
+    pipe.input.repo.owner_name = ("o", "r")
+    pipe.input.repo.access = "auto"
+    pipe.input.repo.url = "https://github.com/o/r"
+    pipe.input.output.org = "default"
+    pipe.input.llm = None
+    pipe.input.bootstrap.platform = "linux/amd64"
+    pipe._progress_cb = None
+    return pipe
+
+
+def test_build_task_stamps_reward_calibration_and_difficulty():
+    """Tasks now carry reward_calibration parity with pr_runtime — needed by
+    the manifest enricher and the eval_grade flag."""
+    pipe = _stub_pipeline_for_build_task()
+    commit = _make_commit(subject="fix: parser crashes on empty input")
+    # one-line patch + one new F2P test ⇒ trivial bucket
+    patch = (
+        "diff --git a/parser.py b/parser.py\n"
+        "--- a/parser.py\n"
+        "+++ b/parser.py\n"
+        "@@ -1,2 +1,2 @@\n"
+        "-old\n"
+        "+new\n"
+    )
+    test_patch = (
+        "diff --git a/tests/test_parser.py b/tests/test_parser.py\n"
+        "--- a/tests/test_parser.py\n"
+        "+++ b/tests/test_parser.py\n"
+        "@@ -0,0 +1,3 @@\n"
+        "+def test_empty_input():\n"
+        "+    assert True\n"
+    )
+    task = pipe._build_task(
+        commit,
+        patch,
+        test_patch,
+        fail_to_pass=["tests/test_parser.py::test_empty_input"],
+        pass_to_pass=["tests/test_parser.py::test_other"],
+        validation_status="ok",
+    )
+    cal = task.repo2env["reward_calibration"]
+    assert cal["f2p_count"] == 1
+    assert cal["p2p_count"] == 1
+    assert cal["source_files"] == 1
+    assert cal["loc_changed"] >= 1
+    assert cal["difficulty"] in {"trivial", "small", "medium", "large"}
+    # The HarborTask's difficulty is set from the bucket, not hard-coded "medium"
+    assert task.difficulty == cal["difficulty"]
+
+
 # -------------------------- structural filter ---------------------------------
 
 

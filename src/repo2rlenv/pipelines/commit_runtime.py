@@ -46,10 +46,17 @@ from repo2rlenv.bootstrap.runner import _shallow_clone_at_ref
 from repo2rlenv.bootstrap.spec import BootstrapResult
 from repo2rlenv.emitter.harbor import HarborTask, write_harbor_task
 from repo2rlenv.git_local import CommitInfo, GitError, list_commits, show_diff
+from repo2rlenv.github import fetch_issue
 from repo2rlenv.pipelines.base import PipelineResult
 from repo2rlenv.pipelines.pr_runtime import (
     _count_new_test_funcs,
+    _diff_loc_changed,
+    _difficulty_bucket,
     _files_in_patch,
+    _linked_issue_number,
+    _reflow_pr_body,
+    _runtime_aux_files,
+    _strip_info_leak,
     build_environment_dockerfile,
     build_eval_script,
     normalize_test_cmds_for_runtime,
@@ -62,12 +69,34 @@ from repo2rlenv.spec.options import CommitRuntimeOptions
 logger = logging.getLogger(__name__)
 
 
-# Strips "Closes #N", "Fixes #N", "Resolves #N" trailers from commit bodies
-_CLOSES_RE = re.compile(r"\b(?:closes|fixes|resolves)\s+#\d+\b", re.IGNORECASE)
+# Strips "Closes #N" / "Fixes [#N](...)" trailers from commit bodies.
+# Includes the markdown form Arc 2 added (`fixes [#1234](url)`) and the
+# bare `[#N](url)` link form too.
+_CLOSES_RE = re.compile(
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+\[?#\d+\]?(?:\([^)]*\))?",
+    re.IGNORECASE,
+)
 
 # Strips conventional-commit prefixes ("fix: ", "feat(scope): ", etc.) from subjects
 _CC_PREFIX_RE = re.compile(
     r"^(?:fix|feat|chore|docs|refactor|test|perf|build|ci|style|revert)(?:\([^)]+\))?:\s*",
+    re.IGNORECASE,
+)
+
+# Conventional-commit types that are NOT bugfixes. These slip into the
+# candidate pool today because `_CC_PREFIX_RE` only *strips* the prefix; it
+# doesn't reject. Mirrors `pr_runtime._NON_BUG_TITLE_RE` for the commit world.
+_NON_BUG_TYPE_RE = re.compile(
+    r"^(?:chore|docs|feat|refactor|style|test|ci|build|perf|revert)(?:\([^)]+\))?:\s*",
+    re.IGNORECASE,
+)
+
+# A bugfix-positive signal we look for when no `fix:` prefix is present and
+# no `Closes #N` trailer links an issue. Avoids letting feature commits with
+# no type prefix sail through.
+_BUGFIX_KEYWORD_RE = re.compile(
+    r"\b(?:fix(?:e[sd])?|fixing|bug(?:fix|s)?|regression|crash(?:e[sd]|ing)?|broken|"
+    r"incorrect(?:ly)?|wrong(?:ly)?|fail(?:s|ed|ing|ure)?|defect|hotfix|patch(?:e[sd])?)\b",
     re.IGNORECASE,
 )
 
@@ -87,11 +116,32 @@ def _strip_commit_prefix(subject: str) -> str:
     return cleaned.strip()
 
 
-def build_instruction_from_commit(commit: CommitInfo) -> str:
-    """Render a commit's subject + body into a task-prompt-shaped string."""
-    subject = _strip_commit_prefix(commit.subject)
-    body = _CLOSES_RE.sub("", commit.body or "").strip()
-    parts = [f"# Issue\n\n**Title:** {subject}"]
+def build_instruction_from_commit(
+    commit: CommitInfo,
+    *,
+    issue: tuple[str, str] | None = None,
+) -> str:
+    """Render a commit's subject + body (or a linked issue) into the task prompt.
+
+    Sourcing order — same lesson as Arc 2's `pr_runtime` fix:
+      1. If the commit links an issue (``Closes #N``) and the caller has
+         fetched it, use the **issue title + body** as the problem statement.
+         The bug report is far less leak-prone than the commit message, which
+         frequently names the function being fixed and points at fix-PRs.
+      2. Otherwise fall back to the commit subject + body, run through
+         `_strip_info_leak` + `_reflow_pr_body` to scrub cross-refs and trim
+         template noise / line-wrap chatter.
+    """
+    if issue is not None:
+        i_title, i_body = issue
+        title = _strip_info_leak(i_title).strip()
+        body = _reflow_pr_body(_strip_info_leak(_CLOSES_RE.sub("", i_body or ""))).strip()
+    else:
+        title = _strip_info_leak(_strip_commit_prefix(commit.subject)).strip()
+        body = _reflow_pr_body(_strip_info_leak(_CLOSES_RE.sub("", commit.body or ""))).strip()
+    if not title:
+        title = _strip_commit_prefix(commit.subject) or "(no title)"
+    parts = [f"# Issue\n\n**Title:** {title}"]
     if body:
         parts.append("## Description\n\n" + body)
     parts.append(
@@ -270,6 +320,14 @@ class CommitRuntimePipeline:
                             self._emit_progress(label, "skip", outcome.reason or "no_fail_to_pass")
                             continue
 
+                    # Issue-fetch fallback: when the commit links an issue
+                    # (`Closes #N`), source the problem statement from the
+                    # issue body — the bug report is far less leak-prone than
+                    # the commit message. Same lesson as Arc 2 for pr_runtime.
+                    issue_num = _linked_issue_number(commit.message or "")
+                    issue = None
+                    if issue_num is not None:
+                        issue = fetch_issue(owner, name, issue_num, token=token)
                     task = self._build_task(
                         commit,
                         patch,
@@ -277,6 +335,7 @@ class CommitRuntimePipeline:
                         fail_to_pass=fail_to_pass,
                         pass_to_pass=pass_to_pass,
                         validation_status=validation_status,
+                        issue=issue,
                     )
                     write_harbor_task(task, out_dir)
                     emitted += 1
@@ -305,7 +364,16 @@ class CommitRuntimePipeline:
     # ----- filters ------------------------------------------------------------
 
     def _metadata_filter(self, commit: CommitInfo) -> str | None:
-        """Cheap filters that don't need the diff content."""
+        """Cheap filters that don't need the diff content.
+
+        Bugfix detection runs in two stages: (a) reject conventional-commit
+        types that are explicitly not bugfixes (chore/docs/feat/refactor/
+        style/test/ci/build/perf/revert), (b) require a positive bugfix
+        signal — `fix:` prefix, a `Closes #N` / `Fixes #N` issue trailer,
+        or a bugfix keyword in the subject. Together these mirror Arc 2's
+        non-bug-PR rejection and stop feature/refactor commits from
+        burning bootstrap cycles in validation.
+        """
         if self.options.skip_merge_commits and commit.is_merge:
             return "merge_commit"
         if commit.author_email in self.options.exclude_authors:
@@ -317,6 +385,16 @@ class CommitRuntimePipeline:
             and _word_count(commit.message) < self.options.min_problem_statement_words
         ):
             return "problem_statement_too_short"
+        subject = commit.subject or ""
+        # (a) explicit non-bugfix type prefix → reject.
+        if _NON_BUG_TYPE_RE.match(subject):
+            return "non_bugfix_type"
+        # (b) at least one bugfix signal must be present.
+        has_fix_prefix = bool(re.match(r"^fix(?:\([^)]+\))?:\s*", subject, re.IGNORECASE))
+        has_linked_issue = _linked_issue_number(commit.message or "") is not None
+        has_keyword = bool(_BUGFIX_KEYWORD_RE.search(subject))
+        if not (has_fix_prefix or has_linked_issue or has_keyword):
+            return "no_bugfix_signal"
         return None
 
     def _structural_filter(self, source_patch: str, test_patch: str) -> str | None:
@@ -360,6 +438,7 @@ class CommitRuntimePipeline:
         fail_to_pass: list[str],
         pass_to_pass: list[str],
         validation_status: str,
+        issue: tuple[str, str] | None = None,
     ) -> HarborTask:
         owner, name = self.input.repo.owner_name
         # commit_runtime task ID convention: <owner>__<repo>-<sha12>
@@ -374,6 +453,11 @@ class CommitRuntimePipeline:
                 _files_in_patch(test_patch),
             ),
             language=self.bootstrap.language.value,
+            # Without F2P/P2P, build_eval_script returns the binary exit-code
+            # script and reward.json is never written. Pass them in so we get
+            # the graded path + tracked/command_resolved breakdown.
+            fail_to_pass=fail_to_pass,
+            pass_to_pass=pass_to_pass,
         )
         image_ref = (
             self.bootstrap.image_digest
@@ -385,9 +469,11 @@ class CommitRuntimePipeline:
             base_commit=commit.parent_sha,
         )
 
+        loc_changed = _diff_loc_changed(patch)
+        difficulty = _difficulty_bucket(len(fail_to_pass), loc_changed)
         repo2env = {
             "pipeline": "commit_runtime",
-            "pipeline_version": "0.5.0",
+            "pipeline_version": "0.8.3",
             "repo": f"{owner}/{name}",
             "ref": commit.parent_sha,
             "reference": f"https://github.com/{owner}/{name}/commit/{commit.sha}",
@@ -406,18 +492,34 @@ class CommitRuntimePipeline:
                 "validation_status": validation_status,
                 "bootstrap_image": self.bootstrap.image_digest,
             },
+            # Calibration parity with pr_runtime: lets the manifest enricher
+            # compute difficulty / p2p_count == 0 / loc_changed sliceability
+            # without re-parsing the diff.
+            "reward_calibration": {
+                "f2p_count": len(fail_to_pass),
+                "p2p_count": len(pass_to_pass),
+                "source_files": len(_files_in_patch(patch)),
+                "loc_changed": loc_changed,
+                "difficulty": difficulty,
+            },
         }
 
         return HarborTask(
             name=task_id,
             org=self.input.output.org,
             description=_strip_commit_prefix(commit.subject) or task_id,
-            instruction=build_instruction_from_commit(commit),
+            instruction=build_instruction_from_commit(commit, issue=issue),
             oracle_diff=patch,
             repo2env=repo2env,
-            difficulty="medium",
+            difficulty=difficulty,
             category="bugfix",
             keywords=[name, "commit_runtime"],
             environment_dockerfile=dockerfile,
             test_script=eval_script,
+            # Ship the graded verifier + F2P/P2P JSON as plain task artifacts
+            # (Harbor mounts tests/ at /tests). Same shape pr_runtime ships
+            # after Arc 2's plain-artifacts refactor — without this, test.sh
+            # falls back to the exit-code reward and reward.json is never
+            # written, so tracked/command_resolved + the breakdown are lost.
+            aux_files=_runtime_aux_files(fail_to_pass, pass_to_pass) if fail_to_pass else {},
         )
